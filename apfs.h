@@ -71,10 +71,10 @@ struct apfs_container_sb {
  */
 
 /**
- * apfs_nxsb_info - In kernel superblock filesystem private data for APFS
+ * apfs_info - In kernel superblock filesystem private data for APFS
  * @bp:		buffer bead for raw superblock
  */
-struct apfs_nxsb_info {
+struct apfs_info {
 	struct apfs_container_sb	*nxsb;
 	struct buffer_head		*bp;
 };
@@ -88,7 +88,7 @@ struct apfs_nxsb_info {
  *
  * @sb:		the VFS super block
  */
-static inline struct apfs_nxsb_info* APFS_SBI(struct super_block *sb)
+static inline struct apfs_info* APFS_SBI(struct super_block *sb)
 {
 	return sb->s_fs_info;
 }

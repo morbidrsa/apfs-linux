@@ -25,7 +25,7 @@
  */
 static int apfs_get_nxsb_magic(struct super_block *sb, int silent, u64 blk)
 {
-	struct apfs_nxsb_info		*apfs_info = APFS_SBI(sb);
+	struct apfs_info		*apfs_info = APFS_SBI(sb);
 	struct apfs_container_sb	*nxsb;
 	struct buffer_head		*bp;
 	int 				rc = -ENOMEM;
@@ -75,7 +75,7 @@ release_buffer:
  */
 static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 {
-	struct apfs_nxsb_info		*apfs_info;
+	struct apfs_info		*apfs_info;
 	struct apfs_container_sb	*nxsb;
 	unsigned int			bsize;
 
