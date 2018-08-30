@@ -108,6 +108,12 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 		goto free_bp;
 	}
 
+	pr_debug("creating container supberblock's object mapper b-tree from block: 0x%llx\n",
+		 le64_to_cpu(nxsb->omap_oid));
+
+	pr_debug("searching for filesystem at object id: 0x%llx\n",
+		 le64_to_cpu(nxsb->fs_oid));
+
 	 /* Until we have a root directoty */
 	goto free_bp;
 	return 0;
