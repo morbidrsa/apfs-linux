@@ -10,6 +10,23 @@
 #include <linux/module.h>
 #include <linux/fs.h>
 
+/**
+ * apfs_fill_super - mount an APFS file system
+ * @sb:		VFS super block to fill
+ * @dp:		fs private mount data
+ * @silent:	remain silent even if errors are detected
+ *
+ * apfs_fill_super() is called by the VFS to mount the device
+ * described by @sb with a APFS file system.
+ *
+ * NOTE: @sb->s_flags will get SB_RDONLY flag added.
+ */
+static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
+{
+	sb->s_flags |= SB_RDONLY;
+
+	return -EINVAL;
+}
 
 /**
  * apfs_mount - mount an APFS file system
@@ -17,11 +34,14 @@
  * @flags:	mount flags passed in
  * @dev_name:	block device name to mount
  * @data:	mount options
+ *
+ * This is only a wrapper over the generic mount_bdev() function. It
+ * passes apfs_fill_super() as the fill_super callback.
  */
 static struct dentry *apfs_mount(struct file_system_type *fs_type, int flags,
 				 const char *dev_name, void *data)
 {
-	return NULL;
+	return mount_bdev(fs_type, flags, dev_name, data, apfs_fill_super);
 }
 
 static struct file_system_type apfs_fs_type = {
