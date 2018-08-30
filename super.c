@@ -14,6 +14,8 @@
 
 #include "apfs.h"
 
+#define APFS_BLOCK_SIZE		4096
+
 /**
  * apfs_get_nxsb_magic - read on-disk container superblock
  * @sb:		VFS super block to save the on-disk super block
@@ -87,7 +89,7 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 
 	sb->s_fs_info = apfs_info;
 
-	bsize = sb_min_blocksize(sb, BLOCK_SIZE);
+	bsize = sb_min_blocksize(sb, APFS_BLOCK_SIZE);
 	if (!bsize) {
 		pr_err("unable to set blocksize\n");
 		goto free_info;
