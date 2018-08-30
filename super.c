@@ -7,8 +7,12 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <linux/buffer_head.h>
 #include <linux/module.h>
+#include <linux/slab.h>
 #include <linux/fs.h>
+
+#include "apfs.h"
 
 /**
  * apfs_fill_super - mount an APFS file system
@@ -23,7 +27,15 @@
  */
 static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 {
+	struct apfs_nxsb_info	*ani;
+
 	sb->s_flags |= SB_RDONLY;
+
+	ani = kzalloc(sizeof(*ani), GFP_KERNEL);
+	if (!ani)
+		return -ENOMEM;
+
+	sb->s_fs_info = ani;
 
 	return -EINVAL;
 }
