@@ -15,6 +15,8 @@
  * https://static.ernw.de/whitepaper/ERNW_Whitepaper65_APFS-forensics_signed.pdf
  */
 
+#define APFS_NXSB_MAGIC		0x4253584e /* NXSB */
+
 /*
  * APFS On-Disk Object Header
  *
@@ -76,5 +78,19 @@ struct apfs_nxsb_info {
 	struct apfs_container_sb	*nxsb;
 	struct buffer_head		*bp;
 };
+
+/*
+ * Helper Functions
+ */
+
+/**
+ * APFS_SBI - get filesystem private data from VFS super block
+ *
+ * @sb:		the VFS super block
+ */
+static inline struct apfs_nxsb_info* APFS_SBI(struct super_block *sb)
+{
+	return sb->s_fs_info;
+}
 
 #endif /* _APFS_H */

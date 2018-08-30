@@ -15,6 +15,54 @@
 #include "apfs.h"
 
 /**
+ * apfs_get_nxsb_magic - read on-disk container superblock
+ * @sb:		VFS super block to save the on-disk super block
+ * @silent:	remain silent even if errors are detected
+ * @blk:	Disk block number to read the container super block from
+ *
+ * apfs_get_nxsb_magic() is called by apfs_fill_super() to read the
+ * on-disk container super block and verify the magic number.
+ */
+static int apfs_get_nxsb_magic(struct super_block *sb, int silent, u64 blk)
+{
+	struct apfs_nxsb_info		*apfs_info = APFS_SBI(sb);
+	struct apfs_container_sb	*nxsb;
+	struct buffer_head		*bp;
+	int 				rc = -ENOMEM;
+
+	bp = sb_bread(sb, blk);
+	if (!bp || !buffer_mapped(bp)) {
+		if (!silent)
+			pr_warn("unable to read container super block at disk block %llu\n",
+				blk);
+		goto release_buffer;
+	}
+
+	rc = -EINVAL;
+	nxsb = (struct apfs_container_sb *) bp->b_data;
+	if (le32_to_cpu(nxsb->magic) != APFS_NXSB_MAGIC) {
+		if (!silent)
+			pr_warn("wrong container super block magic 0x%x at disk block %llu\n",
+				le32_to_cpu(nxsb->magic), blk);
+		goto release_buffer;
+	}
+
+	pr_debug("found container super block at disk block %llu\n", blk);
+
+	apfs_info->nxsb = nxsb;
+	apfs_info->bp = bp;
+
+	return 0;
+
+release_buffer:
+	apfs_info->nxsb = NULL;
+	apfs_info->bp = NULL;
+	brelse(bp);
+
+	return rc;
+}
+
+/**
  * apfs_fill_super - mount an APFS file system
  * @sb:		VFS super block to fill
  * @dp:		fs private mount data
@@ -43,6 +91,9 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 		pr_err("unable to set blocksize\n");
 		goto free_info;
 	}
+
+	if (apfs_get_nxsb_magic(sb, silent, 0))
+		goto free_info;
 
 	return 0;
 
