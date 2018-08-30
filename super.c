@@ -17,6 +17,25 @@
 #define APFS_BLOCK_SIZE		4096
 
 /**
+ * apfs_put_super - free super block resources
+ * @sb:		VFS superblock
+ *
+ * apfs_put_super() frees all resources for @sb after the last
+ * instance is unmounted.
+ */
+static void apfs_put_super(struct super_block *sb)
+{
+	struct apfs_info		*apfs_info = APFS_SBI(sb);
+
+	brelse(apfs_info->bp);
+	kfree(apfs_info);
+}
+
+static const struct super_operations apfs_super_ops = {
+	.put_super	= apfs_put_super,
+};
+
+/**
  * apfs_get_nxsb_magic - read on-disk container superblock
  * @sb:		VFS super block to save the on-disk super block
  * @silent:	remain silent even if errors are detected
@@ -88,6 +107,7 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 		return -ENOMEM;
 
 	sb->s_fs_info = apfs_info;
+	sb->s_op = &apfs_super_ops;
 
 	bsize = sb_min_blocksize(sb, APFS_BLOCK_SIZE);
 	if (!bsize) {
