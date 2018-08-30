@@ -175,19 +175,28 @@ static int __init apfs_init(void)
 {
 	int err;
 
+	err = apfs_create_btree_cache();
+	if (err)
+		return err;
+
 	err = register_filesystem(&apfs_fs_type);
 	if (err) {
 		pr_err("failed to register APFS: %d\n", err);
-		return err;
+		goto free_btree_cache;
 	}
 
 	return 0;
+
+free_btree_cache:
+	apfs_destroy_btree_cache();
+	return err;
 }
 module_init(apfs_init);
 
 static void __exit apfs_exit(void)
 {
 	unregister_filesystem(&apfs_fs_type);
+	apfs_destroy_btree_cache();
 	return;
 }
 module_exit(apfs_exit);

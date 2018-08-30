@@ -1,6 +1,6 @@
 obj-m := apfs.o
 
-apfs-y := super.o
+apfs-y := super.o btree.o
 
 ifneq ($(wildcard ~/src/linux/*),)
 	KDIR="~/src/linux"

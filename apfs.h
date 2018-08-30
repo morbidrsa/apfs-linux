@@ -8,6 +8,9 @@
 #ifndef _APFS_H
 #define _APFS_H
 
+#include <linux/mempool.h>
+#include <linux/fs.h>
+
 /*
  * On-disk Data Structures
  *
@@ -78,6 +81,34 @@ struct apfs_info {
 	struct apfs_container_sb	*nxsb;
 	struct buffer_head		*bp;
 };
+
+/**
+ * apfs_btree - In kernel filesystem object B-Tree
+ * @mempool:	memory pool for allocations in this tree
+ * @sb:		pointer to the tree's file systems's VFS super block
+ * @root:	pointer to the root node
+ */
+struct apfs_btree {
+	mempool_t		*mempool;
+	struct super_block	*sb;
+	struct apfs_bnode	*root;
+};
+
+/**
+ * apfs_bnode - In kernel filesystem object B-Tree node
+ * @tree:	the B-Tree this node belongs to
+ * @block:	the disk block the node is located at
+ */
+struct apfs_bnode {
+	struct apfs_btree	*tree;
+	u64			block;
+};
+
+extern int apfs_create_btree_cache(void);
+extern void apfs_destroy_btree_cache(void);
+extern struct apfs_btree *apfs_btree_create(struct super_block *sb);
+extern struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root,
+						 u64 parent, u64 block);
 
 /*
  * Helper Functions
