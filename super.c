@@ -76,7 +76,8 @@ release_buffer:
 static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 {
 	struct apfs_nxsb_info		*apfs_info;
-	unsigned long			bsize;
+	struct apfs_container_sb	*nxsb;
+	unsigned int			bsize;
 
 	sb->s_flags |= SB_RDONLY;
 
@@ -95,8 +96,22 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 	if (apfs_get_nxsb_magic(sb, silent, 0))
 		goto free_info;
 
+	nxsb = apfs_info->nxsb;
+
+	sb->s_magic = le32_to_cpu(nxsb->magic);
+
+	bsize = le32_to_cpu(nxsb->block_size);
+	if (!sb_set_blocksize(sb, bsize)) {
+		pr_warn("unable to set final block size to: %u\n", bsize);
+		goto free_bp;
+	}
+
+	 /* Until we have a root directoty */
+	goto free_bp;
 	return 0;
 
+free_bp:
+	brelse(apfs_info->bp);
 free_info:
 	kfree(apfs_info);
 
