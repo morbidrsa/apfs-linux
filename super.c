@@ -27,15 +27,27 @@
  */
 static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 {
-	struct apfs_nxsb_info	*ani;
+	struct apfs_nxsb_info		*apfs_info;
+	unsigned long			bsize;
 
 	sb->s_flags |= SB_RDONLY;
 
-	ani = kzalloc(sizeof(*ani), GFP_KERNEL);
-	if (!ani)
+	apfs_info = kzalloc(sizeof(*apfs_info), GFP_KERNEL);
+	if (!apfs_info)
 		return -ENOMEM;
 
-	sb->s_fs_info = ani;
+	sb->s_fs_info = apfs_info;
+
+	bsize = sb_min_blocksize(sb, BLOCK_SIZE);
+	if (!bsize) {
+		pr_err("unable to set blocksize\n");
+		goto free_info;
+	}
+
+	return 0;
+
+free_info:
+	kfree(apfs_info);
 
 	return -EINVAL;
 }
