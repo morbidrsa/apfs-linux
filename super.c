@@ -121,6 +121,7 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 	nxsb = apfs_info->nxsb;
 
 	sb->s_magic = le32_to_cpu(nxsb->magic);
+	apfs_info->blocksize  = le32_to_cpu(nxsb->block_size);
 
 	bsize = le32_to_cpu(nxsb->block_size);
 	if (!sb_set_blocksize(sb, bsize)) {
@@ -130,6 +131,10 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 
 	pr_debug("creating container supberblock's object mapper b-tree from block: 0x%llx\n",
 		 le64_to_cpu(nxsb->omap_oid));
+	apfs_info->omap_root = apfs_btree_create(sb,
+						 le64_to_cpu(nxsb->omap_oid));
+	if (!apfs_info->omap_root)
+		goto free_bp;
 
 	pr_debug("searching for filesystem at object id: 0x%llx\n",
 		 le64_to_cpu(nxsb->fs_oid));

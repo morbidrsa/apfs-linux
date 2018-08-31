@@ -69,17 +69,59 @@ struct apfs_container_sb {
         __le64 			fs_oid;
 } __packed;
 
+struct apfs_btree_header {
+	__le16			flags;
+	__le16			level;
+	__le32			entries;
+	__le16			keys_offs;
+	__le16			keys_len;
+	__le16			free_offs;
+	__le16			free_len;
+	__le64			unknown;
+} __packed;
+
+struct apfs_btree_root {
+	struct apfs_obj_header	ohdr;
+	__le16			flags;
+	__le16			level;
+	__le32			entries;
+	struct {
+		__le64		unknown;
+		__le64		block;
+	} entry[253];
+} __packed;
+
+struct apfs_btree_entry {
+	__le16			key_offs;
+	__le16			val_offs;
+} __packed;
+
+struct apfs_btree_footer {
+	__le64			unknown;
+        __le32			min_key_size;
+        __le32			min_val_size;
+	__le32			max_key_size;
+        __le32			max_val_size;
+	__le64			entries_cnt;
+        __le64			nodes_cnt;
+} __packed;
+
 /*
  * In Kernel Data Structures
  */
 
 /**
  * apfs_info - In kernel superblock filesystem private data for APFS
+ * @nxsb:	cached version of the container super block
  * @bp:		buffer bead for raw superblock
+ * @blocksize:	cached version of the FS' block size
+ * @omap_root:	pointer to the container's object mapper b-tree root
  */
 struct apfs_info {
 	struct apfs_container_sb	*nxsb;
 	struct buffer_head		*bp;
+	u32				blocksize;
+	struct apfs_btree		*omap_root;
 };
 
 /**
@@ -87,28 +129,58 @@ struct apfs_info {
  * @mempool:	memory pool for allocations in this tree
  * @sb:		pointer to the tree's file systems's VFS super block
  * @root:	pointer to the root node
+ * @entries:	number of entries in this tree
+ * @bf:		btree footer of this tree
  */
 struct apfs_btree {
 	mempool_t		*mempool;
 	struct super_block	*sb;
 	struct apfs_bnode	*root;
+	u32			entries;
+	struct apfs_btree_footer *bf;
 };
 
 /**
  * apfs_bnode - In kernel filesystem object B-Tree node
  * @tree:	the B-Tree this node belongs to
+ * @bp:		pointer to the node's buffer head
+ * @keys_start: start of the key area
+ * @vals_start: start of the value area
+ * @parent:	node id of the parent, 0 if root
  * @block:	the disk block the node is located at
+ * @key:	the key
+ * @key_len:	the lenghth of the key
+ * @val:	the value
+ * @val_len:	the length of the value
+ * @ohdr:	the object header on disk
+ * @bh:		the btree header on disk
+ * @entries:	the on-disk child nodes
  */
 struct apfs_bnode {
 	struct apfs_btree	*tree;
+	struct buffer_head	*bp;
+
+	u16			keys_start;
+	u16			vals_start;
+	u64			parent;
 	u64			block;
+
+	void			*key;
+	size_t			key_len;
+	void			*val;
+	size_t			val_len;
+
+	struct apfs_obj_header	*ohdr;
+	struct apfs_btree_header *bh;
+	struct apfs_btree_entry	*entries;
 };
 
 extern int apfs_create_btree_cache(void);
 extern void apfs_destroy_btree_cache(void);
-extern struct apfs_btree *apfs_btree_create(struct super_block *sb);
+extern struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block);
 extern struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root,
-						 u64 parent, u64 block);
+						 u64 parent, u64 block,
+						 gfp_t gfp);
 
 /*
  * Helper Functions
