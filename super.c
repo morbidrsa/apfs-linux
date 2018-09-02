@@ -17,6 +17,36 @@
 #define APFS_BLOCK_SIZE		4096
 
 /**
+ * omap_keycmp - compare object mapper keys
+ * @skey:	search key
+ * @skey_len:	search key length
+ * @ekey:	expected key
+ * @ekey_len:	expected key length
+ * @ctx:	arbitratry context
+ *
+ * omap_keycmp() compares two %apfs_node_id_map_keys against
+ * each other by looking at the object IDs and transaction IDs. This
+ * is used to find the values in the container super block's object
+ * mapper b-tree.
+ */
+static int omap_keycmp(void *skey, size_t skey_len, void *ekey,
+		       size_t ekey_len, void *ctx)
+{
+	struct apfs_node_id_map_key		*skey_map = skey;
+	struct apfs_node_id_map_key		*ekey_map = ekey;
+
+	if (ekey_map->oid < skey_map->oid)
+		return -1;
+	if (ekey_map->oid > skey_map->oid)
+		return 1;
+	if (ekey_map->xid < skey_map->xid)
+		return -1;
+	if (ekey_map->xid > skey_map->xid)
+		return 1;
+	return 0;
+}
+
+/**
  * apfs_put_super - free super block resources
  * @sb:		VFS superblock
  *
@@ -98,6 +128,9 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 {
 	struct apfs_info		*apfs_info;
 	struct apfs_container_sb	*nxsb;
+	struct apfs_node_id_map_key	key;
+	struct apfs_node_id_map_value	val;
+	u32				omap_oid;
 	unsigned int			bsize;
 
 	sb->s_flags |= SB_RDONLY;
@@ -129,17 +162,21 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 		goto free_bp;
 	}
 
-	pr_debug("creating container supberblock's object mapper b-tree from block: 0x%llx\n",
-		 le64_to_cpu(nxsb->omap_oid));
-	apfs_info->omap_root = apfs_btree_create(sb,
-						 le64_to_cpu(nxsb->omap_oid));
+	omap_oid = le64_to_cpu(nxsb->omap_oid);
+	apfs_info->omap_root = apfs_btree_create(sb, omap_oid, omap_keycmp);
 	if (!apfs_info->omap_root)
 		goto free_bp;
 
-	pr_debug("searching for filesystem at object id: 0x%llx\n",
-		 le64_to_cpu(nxsb->fs_oid));
+	key.oid = le64_to_cpu(nxsb->fs_oid);
+	key.xid = le64_to_cpu(nxsb->hdr.xid);
+	if (!apfs_btree_lookup(apfs_info->omap_root, &key, sizeof(key),
+			       &val, sizeof(val)))
+		goto free_bp;
 
-	 /* Until we have a root directoty */
+	pr_debug("searching for filesystem at object id: 0x%llx, block: 0x%llx\n",
+		 le64_to_cpu(nxsb->fs_oid), le64_to_cpu(val.block));
+
+	/* Until we have a root directoty */
 	goto free_bp;
 	return 0;
 

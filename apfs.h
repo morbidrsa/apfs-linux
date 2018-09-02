@@ -98,12 +98,23 @@ struct apfs_btree_entry {
 
 struct apfs_btree_footer {
 	__le64			unknown;
-        __le32			min_key_size;
-        __le32			min_val_size;
+	__le32			min_key_size;
+	__le32			min_val_size;
 	__le32			max_key_size;
-        __le32			max_val_size;
+	__le32			max_val_size;
 	__le64			entries_cnt;
-        __le64			nodes_cnt;
+	__le64			nodes_cnt;
+} __packed;
+
+struct apfs_node_id_map_key {
+	__le64			oid;
+	__le64			xid;
+} __packed;
+
+struct apfs_node_id_map_value {
+	__le32			flags;
+	__le32			size;
+	__le64			block;
 } __packed;
 
 /*
@@ -124,6 +135,8 @@ struct apfs_info {
 	struct apfs_btree		*omap_root;
 };
 
+typedef int (*apfs_btree_keycmp)(void *skey, size_t skey_len, void *ekey,
+				 size_t ekey_len, void *ctx);
 /**
  * apfs_btree - In kernel filesystem object B-Tree
  * @mempool:	memory pool for allocations in this tree
@@ -138,6 +151,7 @@ struct apfs_btree {
 	struct apfs_bnode	*root;
 	u32			entries;
 	struct apfs_btree_footer *bf;
+	apfs_btree_keycmp	keycmp;
 };
 
 /**
@@ -146,6 +160,8 @@ struct apfs_btree {
  * @bp:		pointer to the node's buffer head
  * @keys_start: start of the key area
  * @vals_start: start of the value area
+ * @level:	the level of the node
+ * @ecnt:	number of entries
  * @parent:	node id of the parent, 0 if root
  * @block:	the disk block the node is located at
  * @key:	the key
@@ -162,6 +178,8 @@ struct apfs_bnode {
 
 	u16			keys_start;
 	u16			vals_start;
+	u16			level;
+	u16			ecnt;
 	u64			parent;
 	u64			block;
 
@@ -175,12 +193,26 @@ struct apfs_bnode {
 	struct apfs_btree_entry	*entries;
 };
 
+struct apfs_btree_search_entry {
+	struct apfs_bnode	*node;
+	void			*key;
+	size_t			key_len;
+	void			*val;
+	size_t			val_len;
+};
+
+/*
+ * B-Tree related functions
+ */
+
 extern int apfs_create_btree_cache(void);
 extern void apfs_destroy_btree_cache(void);
-extern struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block);
+extern struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
+					    apfs_btree_keycmp keycmp);
 extern struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root,
-						 u64 parent, u64 block,
-						 gfp_t gfp);
+					 u64 parent, u64 block, gfp_t gfp);
+bool apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size,
+		       void *val, size_t val_size);
 
 /*
  * Helper Functions
