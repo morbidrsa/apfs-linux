@@ -19,6 +19,7 @@
  */
 
 #define APFS_NXSB_MAGIC		0x4253584e /* NXSB */
+#define APFS_APSB_MAGIC		0x42535041 /* APSB */
 
 /*
  * APFS On-Disk Object Header
@@ -67,6 +68,50 @@ struct apfs_container_sb {
         __le32 			unknown1;
         __le32 			max_file_systems;
         __le64 			fs_oid;
+} __packed;
+
+struct apfs_apsb_accessor_info {
+	__le64			last_xid;
+	char			id[32];
+	__le64			timestamp;
+};
+
+struct apfs_volume_sb {
+	struct apfs_obj_header	hdr;
+	__le32 			magic;
+	__le32 			fsidx;
+	__le64 			features;
+	__le64 			unk1;
+	__le64 			unk2;
+	__le64 			unk3;
+	__le64 			fs_reseve_blk_cnt;
+	__le64 			fs_quota_blk_cnt;
+	__le64 			fs_alloc_count;
+	__le64 			unk4;
+	__le64 			unk5;
+	__le64 			unk6;
+	__le64 			unk7;
+	__le64 			omap_oid;
+	__le64 			root_tree_oid;
+	__le64 			extentref_tree_oid;
+	__le64 			snap_meta_tree_oid;
+	__le64 			next_doc_id;
+	__le64 			num_files;
+	__le64 			num_directories;
+	__le64 			num_symlinks;
+	__le64 			num_other_fsobjects;
+	__le64 			num_snapshots;
+	__le64 			unk8;
+	__le64 			unk9;
+	__le64 			unk10;
+	__le64 			unk11;
+	u8			vol_uuid[16];
+	__le64			last_mod_time;
+	struct apfs_apsb_accessor_info ai[9];
+	__le64			unk12;
+	char			volname[0x100];
+	__le64			unk13;
+	__le64			unk14;
 } __packed;
 
 struct apfs_btree_header {
@@ -124,15 +169,19 @@ struct apfs_node_id_map_value {
 /**
  * apfs_info - In kernel superblock filesystem private data for APFS
  * @nxsb:	cached version of the container super block
- * @bp:		buffer bead for raw superblock
+ * @nxsb_bp:	buffer bead for raw container superblock
  * @blocksize:	cached version of the FS' block size
  * @omap_root:	pointer to the container's object mapper b-tree root
+ * @apsb:	cached version of the volume super block
+ * @apsb_bp:	buffer head for the raw colume super block
  */
 struct apfs_info {
 	struct apfs_container_sb	*nxsb;
-	struct buffer_head		*bp;
+	struct buffer_head		*nxsb_bp;
 	u32				blocksize;
 	struct apfs_btree		*omap_root;
+	struct apfs_volume_sb		*apsb;
+	struct buffer_head		*apsb_bp;
 };
 
 typedef int (*apfs_btree_keycmp)(void *skey, size_t skey_len, void *ekey,

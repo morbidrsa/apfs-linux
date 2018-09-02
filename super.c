@@ -57,7 +57,8 @@ static void apfs_put_super(struct super_block *sb)
 {
 	struct apfs_info		*apfs_info = APFS_SBI(sb);
 
-	brelse(apfs_info->bp);
+	brelse(apfs_info->apsb_bp);
+	brelse(apfs_info->nxsb_bp);
 	kfree(apfs_info);
 }
 
@@ -101,13 +102,61 @@ static int apfs_get_nxsb_magic(struct super_block *sb, int silent, u64 blk)
 	pr_debug("found container super block at disk block %llu\n", blk);
 
 	apfs_info->nxsb = nxsb;
-	apfs_info->bp = bp;
+	apfs_info->nxsb_bp = bp;
 
 	return 0;
 
 release_buffer:
 	apfs_info->nxsb = NULL;
-	apfs_info->bp = NULL;
+	apfs_info->nxsb_bp = NULL;
+	brelse(bp);
+
+	return rc;
+}
+
+/**
+ * apfs_get_apsb_magic - read on-disk volume superblock
+ * @sb:		VFS super block to save the on-disk super block
+ * @silent:	remain silent even if errors are detected
+ * @blk:	Disk block number to read the volume super block from
+ *
+ * apfs_get_apsb_magic() is called by apfs_fill_super() to read the
+ * on-disk volume super block and verify the magic number.
+ */
+static int apfs_get_apsb_magic(struct super_block *sb, int silent, u64 blk)
+{
+	struct apfs_info		*apfs_info = APFS_SBI(sb);
+	struct apfs_volume_sb		*apsb;
+	struct buffer_head		*bp;
+	int 				rc = -ENOMEM;
+
+	bp = sb_bread(sb, blk);
+	if (!bp || !buffer_mapped(bp)) {
+		if (!silent)
+			pr_warn("unable to read volume super block at disk block %llu\n",
+				blk);
+		goto release_buffer;
+	}
+
+	rc = -EINVAL;
+	apsb = (struct apfs_volume_sb *) bp->b_data;
+	if (le32_to_cpu(apsb->magic) != APFS_APSB_MAGIC) {
+		if (!silent)
+			pr_warn("wrong volume super block magic 0x%x at disk block %llu\n",
+				le32_to_cpu(apsb->magic), blk);
+		goto release_buffer;
+	}
+
+	pr_debug("found volume super block at disk block 0x%llx\n", blk);
+
+	apfs_info->apsb = apsb;
+	apfs_info->apsb_bp = bp;
+
+	return 0;
+
+release_buffer:
+	apfs_info->apsb = NULL;
+	apfs_info->apsb_bp = NULL;
 	brelse(bp);
 
 	return rc;
@@ -176,12 +225,16 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 	pr_debug("searching for filesystem at object id: 0x%llx, block: 0x%llx\n",
 		 le64_to_cpu(nxsb->fs_oid), le64_to_cpu(val.block));
 
+	if (apfs_get_apsb_magic(sb, silent, val.block))
+		goto free_bp;
+
 	/* Until we have a root directoty */
 	goto free_bp;
 	return 0;
 
 free_bp:
-	brelse(apfs_info->bp);
+	brelse(apfs_info->nxsb_bp);
+	brelse(apfs_info->apsb_bp);
 free_info:
 	kfree(apfs_info);
 
