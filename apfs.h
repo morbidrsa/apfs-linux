@@ -171,17 +171,19 @@ struct apfs_node_id_map_value {
  * @nxsb:	cached version of the container super block
  * @nxsb_bp:	buffer bead for raw container superblock
  * @blocksize:	cached version of the FS' block size
- * @omap_root:	pointer to the container's object mapper b-tree root
+ * @nxsb_omap_root:	pointer to the container's object mapper b-tree root
  * @apsb:	cached version of the volume super block
  * @apsb_bp:	buffer head for the raw colume super block
+ * @apsb_omap_root:	pointer to the container's object mapper b-tree root
  */
 struct apfs_info {
 	struct apfs_container_sb	*nxsb;
 	struct buffer_head		*nxsb_bp;
 	u32				blocksize;
-	struct apfs_btree		*omap_root;
+	struct apfs_btree		*nxsb_omap_root;
 	struct apfs_volume_sb		*apsb;
 	struct buffer_head		*apsb_bp;
+	struct apfs_btree		*apsb_omap_root;
 };
 
 typedef int (*apfs_btree_keycmp)(void *skey, size_t skey_len, void *ekey,
