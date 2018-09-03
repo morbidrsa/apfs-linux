@@ -358,22 +358,17 @@ static int __init apfs_init(void)
 	if (!apfs_inode_cachep)
 		return -ENOMEM;
 
-	err = apfs_create_btree_cache();
-	if (err)
-		goto free_inode_cache;
 
 	err = register_filesystem(&apfs_fs_type);
 	if (err) {
 		pr_err("failed to register APFS: %d\n", err);
-		goto free_btree_cache;
+		goto free_inode_cache;
 	}
 
 	return 0;
 
 free_inode_cache:
 	kmem_cache_destroy(apfs_inode_cachep);
-free_btree_cache:
-	apfs_destroy_btree_cache();
 	return err;
 }
 module_init(apfs_init);
@@ -381,7 +376,6 @@ module_init(apfs_init);
 static void __exit apfs_exit(void)
 {
 	unregister_filesystem(&apfs_fs_type);
-	apfs_destroy_btree_cache();
 	kmem_cache_destroy(apfs_inode_cachep);
 	return;
 }

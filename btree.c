@@ -182,7 +182,7 @@ struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root, u64 parent,
 	pr_debug("creating btree node with parent: 0x%llx for block: 0x%llx\n",
 		 parent, block);
 
-	node = mempool_alloc(root->mempool, gfp);
+	node = kzalloc(sizeof(struct apfs_bnode), gfp);
 	if (!node)
 		return NULL;
 
@@ -217,26 +217,6 @@ release_buffer:
 }
 
 /**
- * apfs_btree_alloc - allocate function for the mempool
- * @gfp_mask:	gfp mask for the allocation
- * @unused:	unused
- */
-static void *apfs_btree_alloc(gfp_t gfp_mask, void *unused)
-{
-	return kmem_cache_alloc(apfs_btree_cachep, gfp_mask);
-}
-
-/**
- * apfs_btree_free - free function for the mempool
- * @element:	the element to free
- * @unused:	unused
- */
-static void apfs_btree_free(void *element, void *unused)
-{
-	kmem_cache_free(apfs_btree_cachep, element);
-}
-
-/**
  * apfs_btree_create - create an APFS B-Tree
  *
  * @sb:		the VFS super block this B-Tree belongs to
@@ -257,11 +237,6 @@ struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
 	tree = kzalloc(sizeof(*tree), GFP_KERNEL);
 	if (!tree)
 		return ERR_PTR(-ENOMEM);
-
-	tree->mempool = mempool_create(0, apfs_btree_alloc,
-				       apfs_btree_free, NULL);
-	if (!tree->mempool)
-		goto free_tree;
 
 	tree->sb = sb;
 
@@ -286,37 +261,8 @@ struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
 	return tree;
 
 release_buffer:
-	mempool_destroy(tree->mempool);
 	brelse(bp);
-free_tree:
 	kfree(tree);
 	return ERR_PTR(-ENOMEM);
 }
 
-/**
- * apfs_create_btree_cache - create the btree's node cache
- *
- * Create the kmem cache for the btree's internal node memory pool
- *
- * Returns: 0 on success %ENOMEM otherwise
- */
-int apfs_create_btree_cache(void)
-{
-	apfs_btree_cachep = kmem_cache_create("apfs_btree_node",
-					      sizeof(struct apfs_bnode),
-					      0, SLAB_HWCACHE_ALIGN, NULL);
-	if (!apfs_btree_cachep)
-		return -ENOMEM;
-
-	return 0;
-}
-
-/**
- * apfs_destroy_btree_cache - destroy the btree's node cache
- *
- * Destroy the kmem cache for the btree's internal node memory pool
- */
-void apfs_destroy_btree_cache(void)
-{
-	kmem_cache_destroy(apfs_btree_cachep);
-}

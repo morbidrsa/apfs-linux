@@ -199,14 +199,12 @@ typedef int (*apfs_btree_keycmp)(void *skey, size_t skey_len, void *ekey,
 				 size_t ekey_len, void *ctx);
 /**
  * apfs_btree - In kernel filesystem object B-Tree
- * @mempool:	memory pool for allocations in this tree
  * @sb:		pointer to the tree's file systems's VFS super block
  * @root:	pointer to the root node
  * @entries:	number of entries in this tree
  * @bf:		btree footer of this tree
  */
 struct apfs_btree {
-	mempool_t		*mempool;
 	struct super_block	*sb;
 	struct apfs_bnode	*root;
 	u32			entries;
@@ -265,8 +263,6 @@ struct apfs_btree_search_entry {
  * B-Tree related functions
  */
 
-extern int apfs_create_btree_cache(void);
-extern void apfs_destroy_btree_cache(void);
 extern struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
 					    apfs_btree_keycmp keycmp);
 extern struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root,
