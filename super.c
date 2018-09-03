@@ -16,6 +16,8 @@
 
 #define APFS_BLOCK_SIZE		4096
 
+static struct kmem_cache *apfs_inode_cachep;
+
 /**
  * omap_keycmp - compare object mapper keys
  * @skey:	search key
@@ -86,7 +88,37 @@ static void apfs_put_super(struct super_block *sb)
 	kfree(apfs_info);
 }
 
+static struct inode *apfs_alloc_inode(struct super_block *sb)
+{
+	struct apfs_inode		*apfs_inode;
+
+	apfs_inode = kmem_cache_alloc(apfs_inode_cachep, GFP_KERNEL);
+	if (!apfs_inode)
+		return NULL;
+
+	inode_init_once(&apfs_inode->vfs_inode);
+	return &apfs_inode->vfs_inode;
+}
+
+static void apfs_i_callback(struct rcu_head *head)
+{
+	struct inode	*inode = container_of(head, struct inode, i_rcu);
+
+	kmem_cache_free(apfs_inode_cachep, APFS_INO(inode));
+}
+
+/**
+ * apfs_destroy_inode() - free an APFS inode
+ * @inode:	the corresponding VFS inode
+ */
+static void apfs_destroy_inode(struct inode *inode)
+{
+	call_rcu(&inode->i_rcu, apfs_i_callback);
+}
+
 static const struct super_operations apfs_super_ops = {
+	.alloc_inode	= apfs_alloc_inode,
+	.destroy_inode	= apfs_destroy_inode,
 	.put_super	= apfs_put_super,
 };
 
@@ -204,6 +236,7 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 	struct apfs_volume_sb		*apsb;
 	struct apfs_node_id_map_key	key;
 	struct apfs_node_id_map_value	val;
+	struct inode			*inode;
 	u64				omap_oid;
 	u64				root_tree_oid;
 	unsigned int			bsize;
@@ -263,7 +296,6 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 		goto free_bp;
 
 	key.oid = root_tree_oid;
-	key.xid = le64_to_cpu(apsb->hdr.xid);
 	if (!apfs_btree_lookup(apfs_info->apsb_omap_root, &key, sizeof(key),
 			       &val, sizeof(val)))
 		goto free_bp;
@@ -271,8 +303,14 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 	pr_debug("searching for root directory at object id: 0x%llx, block: 0x%llx\n",
 		 root_tree_oid, le64_to_cpu(val.block));
 
-	/* Until we have a root directoty */
-	goto free_bp;
+	inode = apfs_iget(sb, APFS_ROOT_INODE);
+	if (IS_ERR(inode))
+		goto free_bp;
+
+	sb->s_root = d_make_root(inode);
+	if (!sb->s_root)
+		goto free_bp;
+
 	return 0;
 
 free_bp:
@@ -313,9 +351,16 @@ static int __init apfs_init(void)
 {
 	int err;
 
+	apfs_inode_cachep = kmem_cache_create("apfs_inode",
+					sizeof(struct apfs_inode), 0,
+					SLAB_RECLAIM_ACCOUNT | SLAB_ACCOUNT,
+					NULL);
+	if (!apfs_inode_cachep)
+		return -ENOMEM;
+
 	err = apfs_create_btree_cache();
 	if (err)
-		return err;
+		goto free_inode_cache;
 
 	err = register_filesystem(&apfs_fs_type);
 	if (err) {
@@ -325,6 +370,8 @@ static int __init apfs_init(void)
 
 	return 0;
 
+free_inode_cache:
+	kmem_cache_destroy(apfs_inode_cachep);
 free_btree_cache:
 	apfs_destroy_btree_cache();
 	return err;
@@ -335,6 +382,7 @@ static void __exit apfs_exit(void)
 {
 	unregister_filesystem(&apfs_fs_type);
 	apfs_destroy_btree_cache();
+	kmem_cache_destroy(apfs_inode_cachep);
 	return;
 }
 module_exit(apfs_exit);

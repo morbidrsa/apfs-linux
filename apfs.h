@@ -163,6 +163,11 @@ struct apfs_node_id_map_value {
 } __packed;
 
 /*
+ * In Kernel Constants
+ */
+#define APFS_ROOT_INODE			1
+
+/*
  * In Kernel Data Structures
  */
 
@@ -184,6 +189,10 @@ struct apfs_info {
 	struct apfs_volume_sb		*apsb;
 	struct buffer_head		*apsb_bp;
 	struct apfs_btree		*apsb_omap_root;
+};
+
+struct apfs_inode {
+	struct inode			vfs_inode;
 };
 
 typedef int (*apfs_btree_keycmp)(void *skey, size_t skey_len, void *ekey,
@@ -262,8 +271,14 @@ extern struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
 					    apfs_btree_keycmp keycmp);
 extern struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root,
 					 u64 parent, u64 block, gfp_t gfp);
-bool apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size,
-		       void *val, size_t val_size);
+extern bool apfs_btree_lookup(struct apfs_btree *tree, void *key,
+			      size_t key_size, void *val, size_t val_size);
+
+/*
+ * Inode related functions
+ */
+
+extern struct inode *apfs_iget(struct super_block *sb, ino_t ino);
 
 /*
  * Helper Functions
@@ -279,4 +294,8 @@ static inline struct apfs_info* APFS_SBI(struct super_block *sb)
 	return sb->s_fs_info;
 }
 
+static inline struct apfs_inode *APFS_INO(struct inode *inode)
+{
+	return container_of(inode, struct apfs_inode, vfs_inode);
+}
 #endif /* _APFS_H */
