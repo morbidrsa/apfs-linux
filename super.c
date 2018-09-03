@@ -263,6 +263,7 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 
 	sb->s_magic = le32_to_cpu(nxsb->magic);
 	apfs_info->blocksize  = le32_to_cpu(nxsb->block_size);
+	apfs_info->xid = le64_to_cpu(nxsb->hdr.xid);
 
 	bsize = le32_to_cpu(nxsb->block_size);
 	if (!sb_set_blocksize(sb, bsize)) {
@@ -277,7 +278,7 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 		goto free_bp;
 
 	key.oid = le64_to_cpu(nxsb->fs_oid);
-	key.xid = le64_to_cpu(nxsb->hdr.xid);
+	key.xid = apfs_info->xid;
 	if (!apfs_btree_lookup(apfs_info->nxsb_omap_root, &key, sizeof(key),
 			       &val, sizeof(val)))
 		goto free_bp;
