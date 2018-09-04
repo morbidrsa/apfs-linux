@@ -262,6 +262,11 @@ release_buffer:
  * @block:	the disk block the of the B-Tree root
  * @keycmp:	callback to the key compare helper function
  * @omap:	object mapper for lookups in this tree
+ *
+ * apfs_btree_create() create a in memory representation of an APFS
+ * b-tree. There are two kinds of b-trees, normal b-trees which use an
+ * object mapper for object to block translation and the object mapper
+ * b-trees themselves.
  */
 struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
 				     apfs_btree_keycmp keycmp,
@@ -287,17 +292,21 @@ struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
 		goto release_buffer;
 
 	disk_tree = (struct apfs_btree_root *) bp->b_data;
-	root_block = disk_tree->entry[0].block;
-	foff = apfs_info->blocksize - sizeof(struct apfs_btree_footer);
+	if (disk_tree->ohdr.type == APFS_OBJ_BTREE_ROOT_PTR) {
+		root_block = disk_tree->entry[0].block;
+		foff = apfs_info->blocksize - sizeof(struct apfs_btree_footer);
 
-	root_node = apfs_btree_create_node(tree, 0, root_block, GFP_KERNEL);
-	if (!root_node)
-		goto release_buffer;
+		root_node = apfs_btree_create_node(tree, 0, root_block,
+						   GFP_KERNEL);
+		if (!root_node)
+			goto release_buffer;
 
-	tree->root = root_node;
-	tree->entries = le32_to_cpu(disk_tree->entries);
-	tree->bf = (struct apfs_btree_footer *) &root_node->bp->b_data[foff];
-	tree->keycmp = keycmp;
+		tree->root = root_node;
+		tree->entries = le32_to_cpu(disk_tree->entries);
+		tree->bf = (struct apfs_btree_footer *)
+			&root_node->bp->b_data[foff];
+		tree->keycmp = keycmp;
+	}
 
 	brelse(bp);
 	return tree;
