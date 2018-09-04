@@ -21,6 +21,26 @@
 #define APFS_NXSB_MAGIC		0x4253584e /* NXSB */
 #define APFS_APSB_MAGIC		0x42535041 /* APSB */
 
+enum apfs_obj_types {
+	APFS_OBJ_NXSB		= 0x1,
+	APFS_OBJ_BTROOT		= 0x2,
+	APFS_OBJ_BTNODE		= 0x3,
+	APFS_OBJ_SPACEMAN_HDR	= 0x5,
+	APFS_OBJ_BITMAP_HDR	= 0x7,
+	APFS_OBJ_BTREE_ROOT_PTR = 0xb,
+	APFS_OBJ_ID_MAPPING	= 0xc,
+	APFS_OBJ_APSB		= 0xd,
+};
+
+enum apfs_obj_subtype {
+	APFS_OBJ_SUB_NONE	= 0x00,
+	APFS_OBJ_SUB_HISTORY	= 0x09,
+	APFS_OBJ_SUB_LOCATION	= 0x0b,
+	APFS_OBJ_SUB_FILES	= 0x0e,
+	APFS_OBJ_SUB_EXTENTS	= 0x0f,
+	APFS_OBJ_SUB_UNKOWN	= 0x10,
+};
+
 /*
  * APFS On-Disk Object Header
  *
