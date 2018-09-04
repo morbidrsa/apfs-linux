@@ -38,7 +38,8 @@ static struct apfs_btree_search_entry *
 apfs_btree_get_entry(struct apfs_btree *tree, struct apfs_bnode *node, int idx)
 {
 	struct apfs_btree_search_entry *se;
-	struct apfs_btree_entry	e;
+	struct apfs_btree_entry_fixed	fe;
+	struct apfs_btree_entry_var	ve;
 	int			koff;
 	int			voff;
 	struct buffer_head	*bp;
@@ -47,16 +48,23 @@ apfs_btree_get_entry(struct apfs_btree *tree, struct apfs_bnode *node, int idx)
 	if (idx >= node->ecnt)
 		return NULL;
 
-	e = node->entries[idx];
+	fe = node->fe[idx];
+	ve = node->ve[idx];
 
 	se = kmalloc(sizeof(*se), GFP_KERNEL);
 	if (!se)
 		return NULL;
 
 	se->node = node;
-	se->key_len = tree->bf->min_key_size;
 
-	koff = node->keys_start + e.key_offs;
+
+	if (node->type == APFS_NODE_TYPE_FIXED) {
+		koff = node->keys_start + fe.key_offs;
+		se->key_len = tree->bf->min_key_size;
+	} else {
+		koff = node->keys_start + ve.key_offs;
+		se->key_len = ve.key_len;
+	}
 
 	bp = sb_bread(sb, node->block);
 	if (!bp || !buffer_mapped(bp)) {
@@ -68,16 +76,27 @@ apfs_btree_get_entry(struct apfs_btree *tree, struct apfs_bnode *node, int idx)
 	if (!se->key)
 		goto free_entry;
 
-	if (node->entries[idx].val_offs != 0xffff) {
-		voff = node->vals_start - e.val_offs;
+	voff = 0;
+	if (node->type == APFS_NODE_TYPE_FIXED) {
+		if (node->fe[idx].val_offs != 0xffff) {
+			voff = node->vals_start - fe.val_offs;
 
-		se->val_len = (node->level > 0) ?
-			sizeof(u64) : tree->bf->min_val_size;
-
-		se->val = kmemdup(&bp->b_data[voff], se->val_len, GFP_KERNEL);
-		if (!se->val)
-			goto free_key;
+			se->val_len = (node->level > 0) ?
+				sizeof(u64) : tree->bf->min_val_size;
+		}
+	} else {
+		if (ve.val_offs != 0xffff) {
+			voff = node->vals_start - ve.val_offs;
+			se->val_len = ve.val_len;
+		}
 	}
+
+	if (!se->val_len || !voff)
+		goto free_key;
+
+	se->val = kmemdup(&bp->b_data[voff], se->val_len, GFP_KERNEL);
+	if (!se->val)
+		goto free_key;
 
 	brelse(bp);
 
@@ -220,9 +239,13 @@ struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root, u64 parent,
 	node->keys_start = 0x38 + le16_to_cpu(bh->keys_len);
 	node->vals_start = (parent != 0) ? size : size
 		- sizeof(struct apfs_btree_footer);
-	node->entries = (struct apfs_btree_entry *) &bp->b_data[0x38];
 	node->ecnt = le16_to_cpu(bh->entries);
 	node->level = le16_to_cpu(bh->level);
+
+	if (bh->flags & 4)
+		node->fe = (struct apfs_btree_entry_fixed *) &bp->b_data[0x38];
+	else
+		node->ve = (struct apfs_btree_entry_var *) &bp->b_data[0x38];
 
 	return node;
 

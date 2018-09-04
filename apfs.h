@@ -136,9 +136,16 @@ struct apfs_btree_root {
 	} entry[253];
 } __packed;
 
-struct apfs_btree_entry {
+struct apfs_btree_entry_fixed {
 	__le16			key_offs;
 	__le16			val_offs;
+} __packed;
+
+struct apfs_btree_entry_var {
+	__le16			key_offs;
+	__le16			key_len;
+	__le16			val_offs;
+	__le16			val_len;
 } __packed;
 
 struct apfs_btree_footer {
@@ -215,6 +222,11 @@ struct apfs_btree {
 	apfs_btree_keycmp	keycmp;
 };
 
+enum apfs_btree_node_type {
+	APFS_NODE_TYPE_FIXED,
+	APFS_NODE_TYPE_VAR,
+};
+
 /**
  * apfs_bnode - In kernel filesystem object B-Tree node
  * @tree:	the B-Tree this node belongs to
@@ -251,7 +263,11 @@ struct apfs_bnode {
 
 	struct apfs_obj_header	*ohdr;
 	struct apfs_btree_header *bh;
-	struct apfs_btree_entry	*entries;
+	enum apfs_btree_node_type type;
+	union {
+		struct apfs_btree_entry_var	*ve;
+		struct apfs_btree_entry_fixed	*fe;
+	};
 };
 
 struct apfs_btree_search_entry {
