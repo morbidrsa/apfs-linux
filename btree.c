@@ -238,9 +238,11 @@ release_buffer:
  * @sb:		the VFS super block this B-Tree belongs to
  * @block:	the disk block the of the B-Tree root
  * @keycmp:	callback to the key compare helper function
+ * @omap:	object mapper for lookups in this tree
  */
 struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
-				     apfs_btree_keycmp keycmp)
+				     apfs_btree_keycmp keycmp,
+				     struct apfs_btree *omap)
 {
 	struct apfs_info		*apfs_info = APFS_SBI(sb);
 	struct apfs_btree		*tree;
@@ -255,6 +257,7 @@ struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
 		return ERR_PTR(-ENOMEM);
 
 	tree->sb = sb;
+	tree->omap = omap;
 
 	bp = sb_bread(sb, block);
 	if (!bp || !buffer_mapped(bp))

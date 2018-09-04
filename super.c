@@ -273,7 +273,7 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 
 	omap_oid = le64_to_cpu(nxsb->omap_oid);
 	apfs_info->nxsb_omap_root = apfs_btree_create(sb, omap_oid,
-						      omap_keycmp);
+						      omap_keycmp, NULL);
 	if (!apfs_info->nxsb_omap_root)
 		goto free_bp;
 
@@ -292,7 +292,7 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 	apsb = apfs_info->apsb;
 	root_tree_oid = le64_to_cpu(apsb->root_tree_oid);
 	apfs_info->apsb_omap_root = apfs_btree_create(sb, apsb->omap_oid,
-						      oid_keycmp);
+						      oid_keycmp, NULL);
 	if (!apfs_info->apsb_omap_root)
 		goto free_bp;
 
