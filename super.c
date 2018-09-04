@@ -304,6 +304,12 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 	pr_debug("searching for root directory at object id: 0x%llx, block: 0x%llx\n",
 		 root_tree_oid, le64_to_cpu(val.block));
 
+	apfs_info->dir_tree_root = apfs_btree_create(sb, root_tree_oid,
+						     oid_keycmp,
+						     apfs_info->apsb_omap_root);
+	if (!apfs_info->dir_tree_root)
+		goto free_bp;
+
 	inode = apfs_iget(sb, APFS_ROOT_INODE);
 	if (IS_ERR(inode))
 		goto free_bp;

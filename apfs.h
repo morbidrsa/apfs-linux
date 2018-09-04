@@ -218,6 +218,7 @@ struct apfs_info {
 	struct apfs_volume_sb		*apsb;
 	struct buffer_head		*apsb_bp;
 	struct apfs_btree		*apsb_omap_root;
+	struct apfs_btree		*dir_tree_root;
 };
 
 struct apfs_inode {
