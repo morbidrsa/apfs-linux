@@ -255,6 +255,19 @@ release_buffer:
 	return NULL;
 }
 
+static u64 apfs_btree_get_blockid(struct apfs_btree *tree, u64 oid, u64 xid)
+{
+	struct apfs_node_id_map_key	key;
+	struct apfs_node_id_map_value	val;
+
+	key.oid = oid;
+	key.xid = xid;
+
+	if (apfs_btree_lookup(tree, &key, sizeof(key), &val, sizeof(val)))
+		return val.block;
+	return 0;
+}
+
 /**
  * apfs_btree_create - create an APFS B-Tree
  *
@@ -275,10 +288,13 @@ struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
 	struct apfs_info		*apfs_info = APFS_SBI(sb);
 	struct apfs_btree		*tree;
 	struct apfs_btree_root		*disk_tree;
+	struct apfs_obj_header		*ohdr;
 	struct buffer_head		*bp;
 	struct apfs_bnode		*root_node;
-	u64 				root_block;
+	u64 				root_block = 0;
 	u32				foff;
+
+	pr_debug("creating b-tree for object: 0x%llx\n", block);
 
 	tree = kzalloc(sizeof(*tree), GFP_KERNEL);
 	if (!tree)
@@ -286,15 +302,26 @@ struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
 
 	tree->sb = sb;
 	tree->omap = omap;
+	tree->keycmp = keycmp;
+
+	foff = apfs_info->blocksize - sizeof(struct apfs_btree_footer);
+
+	if (tree->omap){
+		block = apfs_btree_get_blockid(tree->omap, block,
+						    apfs_info->xid);
+		if (!block)
+			goto free_tree;
+	}
 
 	bp = sb_bread(sb, block);
 	if (!bp || !buffer_mapped(bp))
 		goto release_buffer;
 
-	disk_tree = (struct apfs_btree_root *) bp->b_data;
-	if (disk_tree->ohdr.type == APFS_OBJ_BTREE_ROOT_PTR) {
+	ohdr = (struct apfs_obj_header *) bp->b_data;
+	switch (ohdr->type) {
+	case APFS_OBJ_BTREE_ROOT_PTR:
+		disk_tree = (struct apfs_btree_root *) bp->b_data;
 		root_block = disk_tree->entry[0].block;
-		foff = apfs_info->blocksize - sizeof(struct apfs_btree_footer);
 
 		root_node = apfs_btree_create_node(tree, 0, root_block,
 						   GFP_KERNEL);
@@ -305,7 +332,19 @@ struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
 		tree->entries = le32_to_cpu(disk_tree->entries);
 		tree->bf = (struct apfs_btree_footer *)
 			&root_node->bp->b_data[foff];
-		tree->keycmp = keycmp;
+		break;
+	case APFS_OBJ_BTROOT:
+		root_node = apfs_btree_create_node(tree, 0, block, GFP_KERNEL);
+		if (!root_node)
+			goto release_buffer;
+		tree->root = root_node;
+		tree->bf = (struct apfs_btree_footer *)
+			&root_node->bp->b_data[foff];
+		tree->entries = tree->bf->entries_cnt;
+		break;
+	default:
+		pr_debug("Unknown B-Tree type: 0x%x\n", ohdr->type);
+		goto release_buffer;
 	}
 
 	brelse(bp);
@@ -313,6 +352,7 @@ struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
 
 release_buffer:
 	brelse(bp);
+free_tree:
 	kfree(tree);
 	return ERR_PTR(-ENOMEM);
 }
