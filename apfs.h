@@ -134,6 +134,38 @@ struct apfs_volume_sb {
 	__le64			unk14;
 } __packed;
 
+struct apfs_extent_header {
+	__le16			num_extents;
+	__le16			used_data;
+} __packed;
+
+struct apfs_extent_entry {
+	u8			type;
+	u8			flags;
+	__le16			length;
+} __packed;
+
+struct apfs_dinode {
+	__le64			parent_id;
+	__le64			private_id;
+	__le64			birthtime;
+	__le64			mtime;
+	__le64			ctime;
+	__le64			atime;
+	__le64			flags;
+	__le32			children;
+	__le32			protection_class;
+	__le32			generation;
+	__le32			bsd_flags;
+	__le32			uid;
+	__le32			gid;
+	__le16			mode;
+	__le16			pad;
+	__le64			size;
+	struct apfs_extent_header extent_header;
+	struct apfs_extent_entry  extents[];
+} __packed;
+
 struct apfs_btree_header {
         __le16			flags;
 	__le16			level;
@@ -196,7 +228,7 @@ struct apfs_node_id_map_value {
 /*
  * In Kernel Constants
  */
-#define APFS_ROOT_INODE			1
+#define APFS_ROOT_INODE			2
 
 /*
  * In Kernel Data Structures
@@ -227,6 +259,16 @@ struct apfs_info {
 
 struct apfs_inode {
 	struct inode			vfs_inode;
+
+	u32				mode;
+	u32				nlink;
+	u32				uid;
+	u32				gid;
+	u64				size;
+	u64				mtime;
+	u64				ctime;
+	u64				atime;
+	u32				generation;
 };
 
 typedef int (*apfs_btree_keycmp)(void *skey, size_t skey_len, void *ekey,
@@ -315,6 +357,8 @@ extern struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root,
 struct apfs_btree_search_entry *apfs_btree_lookup(struct apfs_btree *tree,
 						  void *key, size_t key_size);
 void apfs_btree_free_search_entry(struct apfs_btree_search_entry *se);
+extern int apfs_dir_keycmp(void *skey, size_t skey_len, void *ekey,
+			   size_t ekey_len, void *ctx);
 
 /*
  * Inode related functions

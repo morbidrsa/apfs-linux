@@ -235,10 +235,13 @@ struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root, u64 parent,
 	node->ecnt = le16_to_cpu(bh->key_count);
 	node->level = le16_to_cpu(bh->level);
 
-	if (bh->flags & 4)
+	if (bh->flags & 4) {
+		node->type = APFS_NODE_TYPE_FIXED;
 		node->fe = (struct apfs_btree_entry_fixed *) &bp->b_data[hsize];
-	else
+	} else {
+		node->type = APFS_NODE_TYPE_VAR;
 		node->ve = (struct apfs_btree_entry_var *) &bp->b_data[hsize];
+	}
 
 	return node;
 
