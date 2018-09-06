@@ -235,11 +235,12 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 	struct apfs_container_sb	*nxsb;
 	struct apfs_volume_sb		*apsb;
 	struct apfs_node_id_map_key	key;
-	struct apfs_node_id_map_value	val;
+	struct apfs_node_id_map_value	*val;
 	struct inode			*inode;
 	u64				omap_oid;
 	u64				root_tree_oid;
 	unsigned int			bsize;
+	struct apfs_btree_search_entry *bte;
 
 	sb->s_flags |= SB_RDONLY;
 
@@ -279,16 +280,18 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 
 	key.oid = le64_to_cpu(nxsb->fs_oid);
 	key.xid = apfs_info->xid;
-	if (!apfs_btree_lookup(apfs_info->nxsb_omap_root, &key, sizeof(key),
-			       &val, sizeof(val)))
+	bte = apfs_btree_lookup(apfs_info->nxsb_omap_root, &key, sizeof(key));
+	if (!bte)
 		goto free_bp;
+	val = bte->val;
 
 	pr_debug("searching for filesystem at object id: 0x%llx, block: 0x%llx\n",
-		 le64_to_cpu(nxsb->fs_oid), le64_to_cpu(val.block));
+		 le64_to_cpu(nxsb->fs_oid), le64_to_cpu(val->block));
 
-	if (apfs_get_apsb_magic(sb, silent, val.block))
+	if (apfs_get_apsb_magic(sb, silent, val->block))
 		goto free_bp;
 
+	apfs_btree_free_search_entry(bte);
 	apsb = apfs_info->apsb;
 	root_tree_oid = le64_to_cpu(apsb->root_tree_oid);
 	apfs_info->apsb_omap_root = apfs_btree_create(sb, apsb->omap_oid,
@@ -296,16 +299,8 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 	if (!apfs_info->apsb_omap_root)
 		goto free_bp;
 
-	key.oid = root_tree_oid;
-	if (!apfs_btree_lookup(apfs_info->apsb_omap_root, &key, sizeof(key),
-			       &val, sizeof(val)))
-		goto free_bp;
-
-	pr_debug("searching for root directory at object id: 0x%llx, block: 0x%llx\n",
-		 root_tree_oid, le64_to_cpu(val.block));
-
 	apfs_info->dir_tree_root = apfs_btree_create(sb, root_tree_oid,
-						     oid_keycmp,
+						     apfs_dir_keycmp,
 						     apfs_info->apsb_omap_root);
 	if (!apfs_info->dir_tree_root)
 		goto free_bp;

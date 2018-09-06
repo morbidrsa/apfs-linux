@@ -135,14 +135,17 @@ struct apfs_volume_sb {
 } __packed;
 
 struct apfs_btree_header {
-	__le16			flags;
+        __le16			flags;
 	__le16			level;
-	__le32			entries;
-	__le16			keys_offs;
-	__le16			keys_len;
-	__le16			free_offs;
-	__le16			free_len;
-	__le64			unknown;
+        __le32			key_count;
+        __le16			table_space_offset;
+        __le16			table_space_length;
+        __le16			free_space_offset;
+        __le16			free_space_length;
+        __le16			key_free_list_space_offset;
+        __le16			key_free_list_space_length;
+        __le16			val_free_list_space_offset;
+        __le16			val_free_list_space_length;
 } __packed;
 
 struct apfs_btree_root {
@@ -169,9 +172,10 @@ struct apfs_btree_entry_var {
 } __packed;
 
 struct apfs_btree_footer {
-	__le64			unknown;
-	__le32			min_key_size;
-	__le32			min_val_size;
+	__le32			unknown;
+	__le32			nodesize;
+	__le32			key_size;
+	__le32			val_size;
 	__le32			max_key_size;
 	__le32			max_val_size;
 	__le64			entries_cnt;
@@ -308,8 +312,9 @@ extern struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
 					    struct apfs_btree *omap);
 extern struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root,
 					 u64 parent, u64 block, gfp_t gfp);
-extern bool apfs_btree_lookup(struct apfs_btree *tree, void *key,
-			      size_t key_size, void *val, size_t val_size);
+struct apfs_btree_search_entry *apfs_btree_lookup(struct apfs_btree *tree,
+						  void *key, size_t key_size);
+void apfs_btree_free_search_entry(struct apfs_btree_search_entry *se);
 
 /*
  * Inode related functions
