@@ -229,6 +229,7 @@ struct apfs_node_id_map_value {
  * In Kernel Constants
  */
 #define APFS_ROOT_INODE			2
+#define APFS_MAX_NAME			1024
 
 /*
  * In Kernel Data Structures

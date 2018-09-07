@@ -9,6 +9,7 @@
 
 #include <linux/buffer_head.h>
 #include <linux/module.h>
+#include <linux/statfs.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
 
@@ -72,6 +73,16 @@ static int oid_keycmp(void *skey, size_t skey_len, void *ekey,
 	return 0;
 }
 
+static int apfs_statfs(struct dentry *dentry, struct kstatfs *kstatfs)
+{
+	kstatfs->f_type = APFS_NXSB_MAGIC;
+	kstatfs->f_bsize = dentry->d_sb->s_blocksize;
+	kstatfs->f_bavail = 0;
+	kstatfs->f_files = 0;
+	kstatfs->f_namelen = APFS_MAX_NAME;
+	return 0;
+}
+
 /**
  * apfs_put_super - free super block resources
  * @sb:		VFS superblock
@@ -120,6 +131,7 @@ static const struct super_operations apfs_super_ops = {
 	.alloc_inode	= apfs_alloc_inode,
 	.destroy_inode	= apfs_destroy_inode,
 	.put_super	= apfs_put_super,
+	.statfs		= apfs_statfs,
 };
 
 /**
