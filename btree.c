@@ -152,6 +152,9 @@ afps_btree_find_bin(struct apfs_btree *tree, struct apfs_bnode *node,
 			end = mid - 1;
 	}
 
+	if (rc)
+		apfs_btree_free_search_entry(se);
+
 	return (rc == 0) ? se : NULL;
 }
 
@@ -166,14 +169,15 @@ apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size)
 	while (node->level > 0) {
 		entry = afps_btree_find_bin(tree, node, key, key_size);
 		if (!entry)
-			return false;
+			return NULL;
 
 		nodeid = (u64) entry->val;
 		parentid = node->ohdr->oid;
 		node = entry->node;
-		if (!node)
-			return false;
 		apfs_btree_free_search_entry(entry);
+		if (!node)
+			return NULL;
+
 	}
 
 	return afps_btree_find_bin(tree, node, key, key_size);
