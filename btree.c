@@ -108,19 +108,19 @@ free_entry:
 }
 
 /**
- * afps_btree_find_bin() - do a binary search for a key in a btree
+ * apfs_btree_find_bin() - do a binary search for a key in a btree
  * @tree:	the btree to search in
  * @node:	the node to take as a starting point
  * @key:	the key to look up
  * @key_len:	the key's size
  *
- * afps_btree_find_bin() performs a binary search for a given @key in
+ * apfs_btree_find_bin() performs a binary search for a given @key in
  * a @tree starting at @node. It returns a %apfs_btree_search_entry
  * which must be freed with apfs_btree_free_search_entry() when
  * finished.
  */
 static struct apfs_btree_search_entry *
-afps_btree_find_bin(struct apfs_btree *tree, struct apfs_bnode *node,
+apfs_btree_find_bin(struct apfs_btree *tree, struct apfs_bnode *node,
 		    void *key, size_t key_size)
 {
 	struct apfs_btree_search_entry *se;
@@ -167,7 +167,7 @@ apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size)
 	u64			parentid;
 
 	while (node->level > 0) {
-		entry = afps_btree_find_bin(tree, node, key, key_size);
+		entry = apfs_btree_find_bin(tree, node, key, key_size);
 		if (!entry)
 			return NULL;
 
@@ -180,7 +180,7 @@ apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size)
 
 	}
 
-	return afps_btree_find_bin(tree, node, key, key_size);
+	return apfs_btree_find_bin(tree, node, key, key_size);
 }
 
 /**
