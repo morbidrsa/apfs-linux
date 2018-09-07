@@ -21,6 +21,13 @@
 #define APFS_NXSB_MAGIC		0x4253584e /* NXSB */
 #define APFS_APSB_MAGIC		0x42535041 /* APSB */
 
+#define APFS_MAX_NAME			1024
+
+#define APFS_INO_EXT_TYPE_NAME		0x4
+#define APFS_INO_EXT_TYPE_DSTREAM	0x8
+#define APFS_INO_EXT_TYPE_SPARSE_BYTES	0xd
+
+
 enum apfs_obj_types {
 	APFS_OBJ_NXSB		= 0x1,
 	APFS_OBJ_BTROOT		= 0x2,
@@ -225,11 +232,22 @@ struct apfs_node_id_map_value {
 	__le64			block;
 } __packed;
 
+struct apfs_dir_key {
+	__le64			parent_id;
+	__le32			hash;
+	char			name[APFS_MAX_NAME];
+} __packed;
+
+struct apfs_dir_val {
+	__le64			file_id;
+	__le64			date_added;
+	__le16			flags;
+} __packed;
+
 /*
  * In Kernel Constants
  */
 #define APFS_ROOT_INODE			2
-#define APFS_MAX_NAME			1024
 
 /*
  * In Kernel Data Structures
@@ -270,6 +288,7 @@ struct apfs_inode {
 	u64				ctime;
 	u64				atime;
 	u32				generation;
+	char				name[APFS_MAX_NAME];
 };
 
 typedef int (*apfs_btree_keycmp)(void *skey, size_t skey_len, void *ekey,

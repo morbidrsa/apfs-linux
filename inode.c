@@ -30,10 +30,46 @@ static const struct file_operations apfs_dir_fops = {
 	.iterate_shared	= apfs_readdir,
 };
 
-static struct dentry *apfs_lookup(struct inode *inode, struct dentry *dentry,
+static ino_t apfs_inode_by_name(struct inode *dir, struct dentry *dentry)
+{
+	struct apfs_info		*apfs_info = APFS_SBI(dir->i_sb);
+	struct apfs_dir_key		key;
+	struct apfs_dir_key		*dkey;
+	struct apfs_dir_val		*drec;
+	struct apfs_btree_search_entry	*bte;
+	ino_t				ino = 0;
+
+	key.parent_id = (u64) KEY_TYPE_DIR_RECORD << APFS_KEY_SHIFT;
+	key.parent_id |= dir->i_ino;
+	strncpy(key.name, dentry->d_name.name, APFS_MAX_NAME);
+
+	bte = apfs_btree_lookup(apfs_info->dir_tree_root, &key, sizeof(key));
+	if (!bte)
+		return 0;
+
+	dkey = bte->key;
+	drec = bte->val;
+
+	ino = drec->file_id;
+
+	apfs_btree_free_search_entry(bte);
+	return ino;
+}
+
+static struct dentry *apfs_lookup(struct inode *dir, struct dentry *dentry,
 				  unsigned int flags)
 {
-	return ERR_PTR(-ENOENT);
+	struct inode			*inode = NULL;
+	ino_t				ino;
+
+	if (dentry->d_name.len > APFS_MAX_NAME)
+		return ERR_PTR(-ENAMETOOLONG);
+
+	ino = apfs_inode_by_name(dir, dentry);
+	if (ino)
+		inode = apfs_iget(dir->i_sb, ino);
+
+	return d_splice_alias(inode, dentry);
 }
 
 static const struct inode_operations apfs_dir_inode_ops = {
@@ -43,6 +79,8 @@ static const struct inode_operations apfs_dir_inode_ops = {
 int apfs_dir_keycmp(void *skey, size_t skey_len, void *ekey,
 		    size_t ekey_len, void *ctx)
 {
+	struct apfs_dir_key		*sdir;
+	struct apfs_dir_key		*edir;
 	u64				ks = *(u64 *) skey;
 	u64				ke = *(u64 *) ekey;
 
@@ -59,6 +97,10 @@ int apfs_dir_keycmp(void *skey, size_t skey_len, void *ekey,
 
 	switch (ks & 0xf) {
 	case KEY_TYPE_DIR_RECORD:
+		sdir = skey;
+		edir = ekey;
+		if (strlen(sdir->name) && strlen(edir->name))
+			return strncmp(sdir->name, edir->name, APFS_MAX_NAME);
 		break;
 	case KEY_TYPE_FILE_EXTENT:
 		break;
@@ -90,7 +132,8 @@ static int apfs_lookup_disk_inode(struct super_block *sb,
 	struct apfs_dinode		*dinode = NULL;
 	u64				key;
 	struct apfs_btree_search_entry	*bte;
-	int i;
+	int 				i;
+	u16				entry_base;
 
 	key = (u64) KEY_TYPE_INODE << APFS_KEY_SHIFT;
 	key |= ino;
@@ -110,6 +153,20 @@ static int apfs_lookup_disk_inode(struct super_block *sb,
 	apfs_inode->atime = le64_to_cpu(dinode->atime);
 	apfs_inode->ctime = le64_to_cpu(dinode->ctime);
 	apfs_inode->generation = le32_to_cpu(dinode->generation);
+	entry_base = sizeof(struct apfs_dinode) +
+		dinode->extent_header.num_extents +
+		sizeof(struct apfs_extent_entry);
+	for (i = 0; i < dinode->extent_header.num_extents; i++) {
+		switch (dinode->extents[i].type) {
+		case APFS_INO_EXT_TYPE_NAME:
+			strncpy(apfs_inode->name, bte->val + entry_base, APFS_MAX_NAME);
+			break;
+		case APFS_INO_EXT_TYPE_DSTREAM:
+			break;
+		case APFS_INO_EXT_TYPE_SPARSE_BYTES:
+			break;
+		}
+	}
 
 	inode->i_mode = apfs_inode->mode;
 	i_uid_write(inode, (uid_t)apfs_inode->uid);
