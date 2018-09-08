@@ -33,26 +33,29 @@ static const struct file_operations apfs_dir_fops = {
 static ino_t apfs_inode_by_name(struct inode *dir, struct dentry *dentry)
 {
 	struct apfs_info		*apfs_info = APFS_SBI(dir->i_sb);
-	struct apfs_dir_key		key;
-	struct apfs_dir_key		*dkey;
+	struct apfs_dir_key		*key;
 	struct apfs_dir_val		*drec;
 	struct apfs_btree_search_entry	*bte;
 	ino_t				ino = 0;
 
-	key.parent_id = (u64) KEY_TYPE_DIR_RECORD << APFS_KEY_SHIFT;
-	key.parent_id |= dir->i_ino;
-	strncpy(key.name, dentry->d_name.name, APFS_MAX_NAME);
+	key = kzalloc(sizeof(struct apfs_dir_key), GFP_KERNEL);
+	if (!key)
+		return -ENOMEM;
 
-	bte = apfs_btree_lookup(apfs_info->dir_tree_root, &key, sizeof(key));
+	key->parent_id = (u64) KEY_TYPE_DIR_RECORD << APFS_KEY_SHIFT;
+	key->parent_id |= dir->i_ino;
+	memcpy(key->name, dentry->d_name.name, APFS_MAX_NAME);
+
+	bte = apfs_btree_lookup(apfs_info->dir_tree_root, key, sizeof(*key));
 	if (!bte)
-		return 0;
+		goto free_key;
 
-	dkey = bte->key;
 	drec = bte->val;
-
 	ino = drec->file_id;
 
 	apfs_btree_free_search_entry(bte);
+free_key:
+	kfree(key);
 	return ino;
 }
 
