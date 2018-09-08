@@ -7,6 +7,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <linux/slab.h>
 #include <linux/fs.h>
 
 #include "apfs.h"
@@ -103,7 +104,7 @@ int apfs_dir_keycmp(void *skey, size_t skey_len, void *ekey,
 		sdir = skey;
 		edir = ekey;
 		if (strlen(sdir->name) && strlen(edir->name))
-			return strncmp(sdir->name, edir->name, APFS_MAX_NAME);
+			return strncmp(edir->name, sdir->name, APFS_MAX_NAME);
 		break;
 	case KEY_TYPE_FILE_EXTENT:
 		break;
