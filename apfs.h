@@ -365,6 +365,13 @@ struct apfs_btree_search_entry {
 	size_t			val_len;
 };
 
+struct apfs_btree_iter {
+	struct apfs_btree	*tree;
+	struct apfs_bnode	*node;
+	struct apfs_btree_search_entry *bte;
+	loff_t			pos;
+};
+
 /*
  * B-Tree related functions
  */
@@ -377,6 +384,26 @@ extern struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root,
 struct apfs_btree_search_entry *apfs_btree_lookup(struct apfs_btree *tree,
 						  void *key, size_t key_size);
 void apfs_btree_free_search_entry(struct apfs_btree_search_entry *se);
+struct apfs_btree_iter *apfs_btree_get_iter(struct apfs_btree *tree,
+					    void *key, size_t key_size,
+					    loff_t start);
+struct apfs_btree_iter *
+apfs_btree_iter_next(struct apfs_btree_iter *it, void *key, size_t key_len);
+
+static inline bool apfs_btree_iter_end(struct apfs_btree_iter *it)
+{
+	return it->pos == UINT_MAX;
+}
+
+static inline void apfs_btree_free_iter(struct apfs_btree_iter *it)
+{
+	if (!it)
+		return;
+
+	apfs_btree_free_search_entry(it->bte);
+	kfree(it);
+}
+
 extern int apfs_dir_keycmp(void *skey, size_t skey_len, void *ekey,
 			   size_t ekey_len, void *ctx);
 

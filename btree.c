@@ -183,6 +183,85 @@ apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size)
 	return apfs_btree_find_bin(tree, node, key, key_size);
 }
 
+struct apfs_btree_iter *
+apfs_btree_iter_next(struct apfs_btree_iter *it, void *key, size_t key_len)
+{
+	struct apfs_btree_search_entry	*bte = NULL;
+	struct apfs_bnode		*node = it->node;
+	loff_t 				pos = it->pos + 1;
+	int 				rc;
+	apfs_btree_keycmp		keycmp = it->tree->keycmp;
+
+	apfs_btree_free_search_entry(it->bte);
+	it->bte = NULL;
+
+	if (pos >= node->ecnt) {
+		it->pos = UINT_MAX;
+		return it;
+	}
+
+	for (;;) {
+		bte = apfs_btree_get_entry(it->tree, it->node, pos);
+		if (!bte)
+			break;
+
+		rc = keycmp(key, key_len, bte->key, bte->key_len, NULL);
+		if (rc == 0)
+			break;
+
+		apfs_btree_free_search_entry(bte);
+		bte = NULL;
+		if (++pos >= node->ecnt)
+			break;
+	}
+
+	if (pos >= node->ecnt) {
+		pos = UINT_MAX;
+	} else if (bte) {
+		it->bte = bte;
+	}
+	it->pos = pos;
+	return it;
+}
+
+struct apfs_btree_iter *
+apfs_btree_get_iter(struct apfs_btree *tree, void *key, size_t key_size,
+		    loff_t start)
+{
+	struct apfs_btree_iter		*it = NULL;
+	struct apfs_bnode		*root = tree->root;
+	struct apfs_bnode		*node;
+	struct apfs_btree_search_entry	*bte;
+
+	it = kzalloc(sizeof(struct apfs_btree_iter), GFP_KERNEL);
+	if (!it)
+		return ERR_PTR(-ENOMEM);
+
+	it->tree = tree;
+	it->pos = start;
+	node = root;
+	while (node->level > 0) {
+		bte = apfs_btree_find_bin(it->tree, node, key, key_size);
+		if (!bte)
+			goto out;
+
+		node = bte->node;
+		apfs_btree_free_search_entry(bte);
+		if (!node)
+			goto out;
+	}
+
+	bte = apfs_btree_find_bin(it->tree, node, key, key_size);
+	if (!bte)
+		goto out;
+
+	it->node = bte->node;
+	it->bte = bte;
+
+out:
+	return it;
+}
+
 /**
  * apfs_btree_create_node - create a B-Tree Node
  *
