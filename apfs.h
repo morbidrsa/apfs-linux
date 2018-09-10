@@ -390,9 +390,10 @@ struct apfs_btree_iter *apfs_btree_get_iter(struct apfs_btree *tree,
 struct apfs_btree_iter *
 apfs_btree_iter_next(struct apfs_btree_iter *it, void *key, size_t key_len);
 
+#define APFS_BTREE_ITER_END	(loff_t)~0
 static inline bool apfs_btree_iter_end(struct apfs_btree_iter *it)
 {
-	return it->pos == UINT_MAX;
+	return it->pos == APFS_BTREE_ITER_END;
 }
 
 static inline void apfs_btree_free_iter(struct apfs_btree_iter *it)

@@ -196,7 +196,7 @@ apfs_btree_iter_next(struct apfs_btree_iter *it, void *key, size_t key_len)
 	it->bte = NULL;
 
 	if (pos >= node->ecnt) {
-		it->pos = UINT_MAX;
+		it->pos = APFS_BTREE_ITER_END;
 		return it;
 	}
 
@@ -216,7 +216,7 @@ apfs_btree_iter_next(struct apfs_btree_iter *it, void *key, size_t key_len)
 	}
 
 	if (pos >= node->ecnt) {
-		pos = UINT_MAX;
+		pos = APFS_BTREE_ITER_END;
 	} else if (bte) {
 		it->bte = bte;
 	}
