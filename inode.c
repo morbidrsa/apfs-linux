@@ -59,13 +59,21 @@ static int apfs_readdir(struct file *file, struct dir_context *ctx)
 		it = apfs_btree_iter_next(it, key, sizeof(*key));
 	}
 
-	for (;;) {
+	while (!apfs_btree_iter_end(it)) {
 		bte = it->bte;
 		if (!bte)
 			break;
 
 		if (apfs_btree_iter_end(it))
 			break;
+
+		/*
+		 * check if we've already found this entry at another
+		 * position, this works around a bug in the iterator
+		 * code, where we return some entries twice.
+		 */
+		if (apfs_btree_iter_dup(it, bte))
+			goto next;
 
 		dkey = bte->key;
 		drec = bte->val;
@@ -76,6 +84,7 @@ static int apfs_readdir(struct file *file, struct dir_context *ctx)
 			goto free_key;
 
 		ctx->pos++;
+next:
 		it = apfs_btree_iter_next(it, key, sizeof(*key));
 	}
 

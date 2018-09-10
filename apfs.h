@@ -368,8 +368,9 @@ struct apfs_btree_search_entry {
 struct apfs_btree_iter {
 	struct apfs_btree	*tree;
 	struct apfs_bnode	*node;
-	struct apfs_btree_search_entry *bte;
 	loff_t			pos;
+	struct apfs_btree_search_entry *bte;
+	struct apfs_btree_search_entry *se[253];
 };
 
 /*
@@ -389,6 +390,9 @@ struct apfs_btree_iter *apfs_btree_get_iter(struct apfs_btree *tree,
 					    loff_t start);
 struct apfs_btree_iter *
 apfs_btree_iter_next(struct apfs_btree_iter *it, void *key, size_t key_len);
+
+bool apfs_btree_iter_dup(struct apfs_btree_iter *it,
+			 struct apfs_btree_search_entry *bte);
 
 #define APFS_BTREE_ITER_END	(loff_t)~0
 static inline bool apfs_btree_iter_end(struct apfs_btree_iter *it)

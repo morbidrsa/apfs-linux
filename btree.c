@@ -158,6 +158,24 @@ apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size)
 	return apfs_btree_find_bin(tree, node, key, key_size);
 }
 
+bool apfs_btree_iter_dup(struct apfs_btree_iter *it,
+			 struct apfs_btree_search_entry *bte)
+{
+	int				i;
+	struct apfs_btree_search_entry *sbte;
+
+	for (i = 0; i < it->pos - 1; i++) {
+		if (!it->se[i])
+			continue;
+		sbte = it->se[i];
+		if (bte->val_len != sbte->val_len)
+			continue;
+		if (!memcmp(bte->val, sbte->val, bte->val_len))
+			return true;
+	}
+	return false;
+}
+
 struct apfs_btree_iter *
 apfs_btree_iter_next(struct apfs_btree_iter *it, void *key, size_t key_len)
 {
@@ -172,6 +190,12 @@ apfs_btree_iter_next(struct apfs_btree_iter *it, void *key, size_t key_len)
 
 	if (pos >= node->ecnt) {
 		it->pos = APFS_BTREE_ITER_END;
+		return it;
+	}
+
+	if (it->se[pos]) {
+		it->bte = it->se[pos];
+		it->pos = pos;
 		return it;
 	}
 
@@ -190,10 +214,12 @@ apfs_btree_iter_next(struct apfs_btree_iter *it, void *key, size_t key_len)
 			break;
 	}
 
-	if (pos >= node->ecnt)
+	if (pos >= node->ecnt) {
 		pos = APFS_BTREE_ITER_END;
-	else if (bte)
+	} else if (bte) {
 		it->bte = bte;
+		it->se[pos] = bte;
+	}
 
 	it->pos = pos;
 	return it;
@@ -230,6 +256,8 @@ apfs_btree_get_iter(struct apfs_btree *tree, void *key, size_t key_size,
 
 	it->node = bte->node;
 	it->bte = bte;
+
+	it->se[it->pos] = bte;
 
 out:
 	return it;
