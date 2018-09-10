@@ -20,11 +20,6 @@ static struct kmem_cache *apfs_btree_cachep;
  */
 void apfs_btree_free_search_entry(struct apfs_btree_search_entry *se)
 {
-	if (!se)
-		return;
-
-	kfree(se->key);
-	kfree(se->val);
 	kfree(se);
 }
 
@@ -42,8 +37,7 @@ apfs_btree_get_entry(struct apfs_btree *tree, struct apfs_bnode *node, int idx)
 	struct apfs_btree_entry_var	ve;
 	int			koff;
 	int			voff;
-	struct buffer_head	*bp;
-	struct super_block	*sb = tree->sb;
+	struct buffer_head	*bp = node->bp;
 
 	if (idx >= node->ecnt)
 		return NULL;
@@ -65,18 +59,7 @@ apfs_btree_get_entry(struct apfs_btree *tree, struct apfs_bnode *node, int idx)
 		se->key_len = ve.key_len;
 	}
 
-	bp = sb_bread(sb, node->block);
-	if (!bp || !buffer_mapped(bp)) {
-		brelse(bp);
-		goto free_entry;
-	}
-
-	if (se->key_len == 0)
-		se->key_len = sizeof(u64);
-
-	se->key = kmemdup(&bp->b_data[koff], se->key_len, GFP_KERNEL);
-	if (!se->key)
-		goto free_entry;
+	se->key = &bp->b_data[koff];
 
 	if (node->type == APFS_NODE_TYPE_FIXED && fe.val_offs != 0xffff) {
 		voff = node->vals_start - fe.val_offs;
@@ -87,21 +70,12 @@ apfs_btree_get_entry(struct apfs_btree *tree, struct apfs_bnode *node, int idx)
 		voff = node->vals_start - ve.val_offs;
 		se->val_len = ve.val_len;
 	} else
-		goto free_key;
+		goto free_entry;
 
-	if (se->val_len == 0)
-		se->val_len = sizeof(u64);
-
-	se->val = kmemdup(&bp->b_data[voff], se->val_len, GFP_KERNEL);
-	if (!se->val)
-		goto free_key;
-
-	brelse(bp);
+	se->val = &bp->b_data[voff];
 
 	return se;
 
-free_key:
-	kfree(se->key);
 free_entry:
 	kfree(se);
 	return NULL;
@@ -150,6 +124,7 @@ apfs_btree_find_bin(struct apfs_btree *tree, struct apfs_bnode *node,
 			begin = mid + 1;
 		else if (rc == 1)
 			end = mid - 1;
+		apfs_btree_free_search_entry(se);
 	}
 
 	if (rc)
@@ -201,7 +176,7 @@ apfs_btree_iter_next(struct apfs_btree_iter *it, void *key, size_t key_len)
 	}
 
 	for (;;) {
-		bte = apfs_btree_get_entry(it->tree, it->node, pos);
+		bte = apfs_btree_get_entry(it->tree, node, pos);
 		if (!bte)
 			break;
 
@@ -215,11 +190,11 @@ apfs_btree_iter_next(struct apfs_btree_iter *it, void *key, size_t key_len)
 			break;
 	}
 
-	if (pos >= node->ecnt) {
+	if (pos >= node->ecnt)
 		pos = APFS_BTREE_ITER_END;
-	} else if (bte) {
+	else if (bte)
 		it->bte = bte;
-	}
+
 	it->pos = pos;
 	return it;
 }
@@ -239,7 +214,7 @@ apfs_btree_get_iter(struct apfs_btree *tree, void *key, size_t key_size,
 
 	it->tree = tree;
 	it->pos = start;
-	node = root;
+	it->node = node = root;
 	while (node->level > 0) {
 		bte = apfs_btree_find_bin(it->tree, node, key, key_size);
 		if (!bte)
@@ -247,8 +222,6 @@ apfs_btree_get_iter(struct apfs_btree *tree, void *key, size_t key_size,
 
 		node = bte->node;
 		apfs_btree_free_search_entry(bte);
-		if (!node)
-			goto out;
 	}
 
 	bte = apfs_btree_find_bin(it->tree, node, key, key_size);
