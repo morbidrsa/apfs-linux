@@ -22,7 +22,68 @@ enum apfs_key_type {
 
 static int apfs_readdir(struct file *file, struct dir_context *ctx)
 {
-	return 0;
+	struct inode			*inode = file_inode(file);
+	struct apfs_info		*apfs_info = APFS_SBI(inode->i_sb);
+	struct apfs_btree		*dir_tree = apfs_info->dir_tree_root;
+	struct apfs_dir_key		*key;
+	struct apfs_dir_key		*dkey;
+	struct apfs_dir_val		*drec;
+	struct apfs_btree_iter		*it = file->private_data;
+	struct apfs_btree_search_entry	*bte;
+	int				rc;
+
+	if (!dir_emit_dots(file, ctx))
+		return 0;
+
+	key = kzalloc(sizeof(struct apfs_dir_key), GFP_KERNEL);
+	if (!key)
+		return -ENOMEM;
+
+	key->parent_id = (u64) KEY_TYPE_DIR_RECORD << APFS_KEY_SHIFT;
+	key->parent_id |= inode->i_ino;
+	memset(key->name, 0, APFS_MAX_NAME);
+
+	if (!it) {
+		it = apfs_btree_get_iter(dir_tree, key, sizeof(*key), ctx->pos);
+		if (IS_ERR(it)) {
+			rc = PTR_ERR(it);
+			goto free_key;
+		}
+		file->private_data = it;
+	} else if (apfs_btree_iter_end(it)) {
+		apfs_btree_free_iter(it);
+		file->private_data = NULL;
+		rc = 0;
+		goto free_key;
+	} else {
+		it = apfs_btree_iter_next(it, key, sizeof(*key));
+	}
+
+	for (;;) {
+		bte = it->bte;
+		if (!bte)
+			break;
+
+		if (apfs_btree_iter_end(it))
+			break;
+
+		dkey = bte->key;
+		drec = bte->val;
+
+		rc = dir_emit(ctx, dkey->name, strlen(dkey->name),
+			      le64_to_cpu(drec->file_id), DT_UNKNOWN);
+		if (!rc)
+			goto free_key;
+
+		ctx->pos++;
+		it = apfs_btree_iter_next(it, key, sizeof(*key));
+	}
+
+	rc = 0;
+free_key:
+	kfree(key);
+	return rc;
+
 }
 
 static const struct file_operations apfs_dir_fops = {
