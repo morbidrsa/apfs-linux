@@ -168,7 +168,7 @@ struct apfs_dinode {
 	__le32			gid;
 	__le16			mode;
 	__le16			pad;
-	__le64			size;
+	__le64			uncomp_size;
 	struct apfs_extent_header extent_header;
 	struct apfs_extent_entry  extents[];
 } __packed;
