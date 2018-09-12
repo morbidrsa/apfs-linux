@@ -277,7 +277,7 @@ struct inode *apfs_iget(struct super_block *sb, ino_t ino)
 		return inode;
 
 	apfs_inode = APFS_INO(inode);
-	ret = apfs_lookup_disk_inode(sb, apfs_inode, APFS_ROOT_INODE);
+	ret = apfs_lookup_disk_inode(sb, apfs_inode, ino);
 	if (ret) {
 		iget_failed(inode);
 		return ERR_PTR(ret);
