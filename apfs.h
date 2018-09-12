@@ -279,7 +279,7 @@ struct apfs_info {
 struct apfs_inode {
 	struct inode			vfs_inode;
 
-	u32				mode;
+	u16				mode;
 	u32				nlink;
 	u32				uid;
 	u32				gid;

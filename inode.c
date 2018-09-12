@@ -218,7 +218,7 @@ static int apfs_lookup_disk_inode(struct super_block *sb,
 
 	dinode = bte->val;
 
-	apfs_inode->mode = le32_to_cpu(dinode->mode);
+	apfs_inode->mode = le16_to_cpu(dinode->mode);
 	apfs_inode->nlink = le32_to_cpu(dinode->children);
 	apfs_inode->uid = le32_to_cpu(dinode->uid);
 	apfs_inode->gid = le32_to_cpu(dinode->gid);
