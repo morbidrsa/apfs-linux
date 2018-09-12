@@ -204,6 +204,7 @@ static int apfs_lookup_disk_inode(struct super_block *sb,
 	struct apfs_info 		*apfs_info = APFS_SBI(sb);
 	struct inode			*inode = &apfs_inode->vfs_inode;
 	struct apfs_dinode		*dinode = NULL;
+	struct apfs_ext_dstream		*dstream;
 	u64				key;
 	struct apfs_btree_search_entry	*bte;
 	int 				i;
@@ -222,36 +223,42 @@ static int apfs_lookup_disk_inode(struct super_block *sb,
 	apfs_inode->nlink = le32_to_cpu(dinode->children);
 	apfs_inode->uid = le32_to_cpu(dinode->uid);
 	apfs_inode->gid = le32_to_cpu(dinode->gid);
-	apfs_inode->size = le64_to_cpu(dinode->size);
 	apfs_inode->mtime = le64_to_cpu(dinode->mtime);
 	apfs_inode->atime = le64_to_cpu(dinode->atime);
 	apfs_inode->ctime = le64_to_cpu(dinode->ctime);
 	apfs_inode->generation = le32_to_cpu(dinode->generation);
-	entry_base = sizeof(struct apfs_dinode) +
-		dinode->extent_header.num_extents +
-		sizeof(struct apfs_extent_entry);
-	for (i = 0; i < dinode->extent_header.num_extents; i++) {
-		switch (dinode->extents[i].type) {
-		case APFS_INO_EXT_TYPE_NAME:
-			strncpy(apfs_inode->name, bte->val + entry_base, APFS_MAX_NAME);
-			break;
-		case APFS_INO_EXT_TYPE_DSTREAM:
-			break;
-		case APFS_INO_EXT_TYPE_SPARSE_BYTES:
-			break;
-		}
-	}
 
 	inode->i_mode = apfs_inode->mode;
 	i_uid_write(inode, (uid_t)apfs_inode->uid);
 	i_gid_write(inode, (gid_t)apfs_inode->gid);
-	inode->i_size = apfs_inode->size;
 	set_nlink(inode, apfs_inode->nlink);
 	inode->i_generation = apfs_inode->generation;
 
 	apfs_get_time(&inode->i_atime, apfs_inode->atime);
 	apfs_get_time(&inode->i_mtime, apfs_inode->mtime);
 	apfs_get_time(&inode->i_ctime, apfs_inode->ctime);
+
+	entry_base = sizeof(struct apfs_dinode) +
+		(dinode->extent_header.num_extents *
+		 sizeof(struct apfs_extent_entry));
+
+	for (i = 0; i < dinode->extent_header.num_extents; i++) {
+		switch (dinode->extents[i].type) {
+		case APFS_INO_EXT_TYPE_NAME:
+			strncpy(apfs_inode->name, bte->val + entry_base,
+				APFS_MAX_NAME);
+			break;
+		case APFS_INO_EXT_TYPE_DSTREAM:
+			dstream = bte->val + entry_base;
+			inode->i_size = le64_to_cpu(dstream->allocated_size);
+			inode_set_bytes(inode, le64_to_cpu(dstream->size));
+			break;
+		case APFS_INO_EXT_TYPE_SPARSE_BYTES:
+			break;
+		}
+
+		entry_base += ((dinode->extents[i].length + 7) & 0xfff8);
+	}
 
 	apfs_btree_free_search_entry(bte);
 

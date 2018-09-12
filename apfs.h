@@ -244,6 +244,13 @@ struct apfs_dir_val {
 	__le16			flags;
 } __packed;
 
+struct apfs_ext_dstream {
+	__le64			size;
+	__le64			allocated_size;
+	__le64			crypto_id;
+	__le64			unk[2];
+} __packed;
+
 /*
  * In Kernel Constants
  */
