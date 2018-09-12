@@ -7,6 +7,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <linux/buffer_head.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
 
@@ -265,6 +266,45 @@ static int apfs_lookup_disk_inode(struct super_block *sb,
 	return 0;
 }
 
+static int apfs_getblk(struct inode *inode, sector_t iblock,
+		       struct buffer_head *bh, int create)
+{
+	struct apfs_info		*apfs_info = APFS_SBI(inode->i_sb);
+	struct apfs_file_ext_key	key;
+	struct apfs_file_ext_key	*extent_key;
+	struct apfs_file_ext_val	*extent;
+	struct apfs_btree_search_entry	*bte;
+	u64				extent_size;
+
+	key.oid = (u64) KEY_TYPE_FILE_EXTENT << APFS_KEY_SHIFT;
+	key.oid |= inode->i_ino;
+	key.offs = iblock;
+
+	bte = apfs_btree_lookup(apfs_info->dir_tree_root, &key, sizeof(key));
+	if (!bte)
+		return -EIO;
+
+	extent = bte->val;
+	extent_key = bte->key;
+
+	extent_size = extent->flags_length & 0x00ffffffffffffff;
+
+	map_bh(bh, inode->i_sb, extent->phys_blocks);
+	bh->b_size = extent_size;
+
+	apfs_btree_free_search_entry(bte);
+	return 0;
+}
+
+static int apfs_readpage(struct file *file, struct page *page)
+{
+	return block_read_full_page(page, apfs_getblk);
+}
+
+static struct address_space_operations apfs_aops = {
+	.readpage		= apfs_readpage,
+};
+
 /**
  * apfs_iget() - Get an inode
  * @sb:		the super block to get the inode for
@@ -293,6 +333,9 @@ struct inode *apfs_iget(struct super_block *sb, ino_t ino)
 	if (S_ISDIR(inode->i_mode)) {
 		inode->i_op = &apfs_dir_inode_ops;
 		inode->i_fop = &apfs_dir_fops;
+	} else if (S_ISREG(inode->i_mode)) {
+		inode->i_fop = &generic_ro_fops;
+		inode->i_mapping->a_ops = &apfs_aops;
 	}
 
 	unlock_new_inode(inode);

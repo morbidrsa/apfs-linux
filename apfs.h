@@ -251,6 +251,17 @@ struct apfs_ext_dstream {
 	__le64			unk[2];
 } __packed;
 
+struct apfs_file_ext_key {
+	__le64			oid;
+	__le64			offs;
+} __packed;
+
+struct apfs_file_ext_val {
+	__le64			flags_length;
+	__le64			phys_blocks;
+	__le64			crypto_id;
+} __packed;
+
 /*
  * In Kernel Constants
  */
