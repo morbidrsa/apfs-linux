@@ -21,6 +21,15 @@ enum apfs_key_type {
 	KEY_TYPE_DIR_RECORD =		9,
 };
 
+/**
+ * apfs_readdir() - iterate over directory contents
+ * @file:	the struct file representing the directory
+ * @ctx:	the context of readdir
+ *
+ * apfs_readdir() iterates over the contents of the directory pointed
+ * to by @file starting at the position in @ctx->pos. It adds found
+ * directories to @ctx, updates the position and returns from there.
+ */
 static int apfs_readdir(struct file *file, struct dir_context *ctx)
 {
 	struct inode			*inode = file_inode(file);
@@ -102,6 +111,15 @@ static const struct file_operations apfs_dir_fops = {
 	.iterate_shared	= apfs_readdir,
 };
 
+/**
+ * apfs_inode_by_name() - lookup an APFS inode by name
+ * @dir:	parent directory of the inode to lookup
+ * @dentry:	dentry encoding the name of the inode to lookup
+ *
+ * apfs_inode_by_name() searches for an inode identified by
+ * @dentry->d_name.name in the directory with an inode pointed to by
+ * @dir.
+ */
 static ino_t apfs_inode_by_name(struct inode *dir, struct dentry *dentry)
 {
 	struct apfs_info		*apfs_info = APFS_SBI(dir->i_sb);
@@ -131,6 +149,17 @@ free_key:
 	return ino;
 }
 
+/**
+ * apfs_lookup() - lookup an APFS inode
+ * @dir:	parent directory of the inode to lookup
+ * @dentry:	dentry encoding the name of the inode to lookup
+ * @flags:	unused
+ *
+ * apfs_lookup() searches for an inode identified by
+ * @dentry->d_name.name in the directory with an inode pointed to by
+ * @dir.
+
+ */
 static struct dentry *apfs_lookup(struct inode *dir, struct dentry *dentry,
 				  unsigned int flags)
 {
@@ -151,6 +180,18 @@ static const struct inode_operations apfs_dir_inode_ops = {
 	.lookup		= apfs_lookup,
 };
 
+/**
+ * apfs_dir_keycmp() - B-Tree key compare callback for dir contents
+ * @skey:	search key
+ * @skey_len:	search key length
+ * @ekey:	expected key
+ * @ekey_len:	expected key length
+ * @ctx:	arbitratry context
+ *
+ * apfs_dir_keycmp() compares two keys for lookup of directory
+ * contents. These keys can either be of %KEY_TYPE_DIR_RECORD,
+ * %KEY_TYPE_FILE_EXTENT or %KEY_TYPE_XATTR.
+ */
 int apfs_dir_keycmp(void *skey, size_t skey_len, void *ekey,
 		    size_t ekey_len, void *ctx)
 {
@@ -198,6 +239,17 @@ static void apfs_get_time(struct timespec64 *ts, u64 dit)
 	ts->tv_sec = dit / 1000000000ull;
 }
 
+/**
+ * apfs_lookup_disk_inode() - lookup an inode from disk
+ * @sb:		the VFS superblock
+ * @apfs_inode:	the apfs_inode to fill
+ * @ino:	the inode number to lookup
+ *
+ * apfs_lookup_disk_inode() searches for the inode with inode number
+ * @ino on the filesystem pointed to by @sb and fills the APFS
+ * specific inode structure @apfs_inode with the respective
+ * information found.
+ */
 static int apfs_lookup_disk_inode(struct super_block *sb,
 				  struct apfs_inode *apfs_inode,
 				  ino_t ino)
@@ -266,6 +318,16 @@ static int apfs_lookup_disk_inode(struct super_block *sb,
 	return 0;
 }
 
+/**
+ * @apfs_getblk() - get a block from disk
+ * @inode:	the inode we're reading the block for
+ * @iblock:	the inode block
+ * @bh:		the buffer head to fill
+ * @create:	flag indicating we want to create a block
+ *
+ * apfs_getblk() reads the block @iblock of inode @inode from disk and
+ * populates the buffer_head @bh with it's content.
+ */
 static int apfs_getblk(struct inode *inode, sector_t iblock,
 		       struct buffer_head *bh, int create)
 {
@@ -296,6 +358,15 @@ static int apfs_getblk(struct inode *inode, sector_t iblock,
 	return 0;
 }
 
+/**
+ * apfs_readpage() - read a page from a file
+ * @file:	the file we're reading the page for
+ * @page:	the page we want to fill
+ *
+ * apfs_readpage() reads a page @page from a file @file on disk. It is
+ * only a wrapper over block_read_full_page() passing in apfs_getblk()
+ * as %get_block callback for block_read_full_page().
+ */
 static int apfs_readpage(struct file *file, struct page *page)
 {
 	return block_read_full_page(page, apfs_getblk);

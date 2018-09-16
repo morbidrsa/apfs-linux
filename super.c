@@ -73,6 +73,11 @@ static int oid_keycmp(void *skey, size_t skey_len, void *ekey,
 	return 0;
 }
 
+/**
+ * apfs_statfs() - provide statistics for filesystem
+ * @dentry:	dentry representing the filesystem
+ * @kstatfs:	the struct kstatfs to fill with infos
+ */
 static int apfs_statfs(struct dentry *dentry, struct kstatfs *kstatfs)
 {
 	kstatfs->f_type = APFS_NXSB_MAGIC;
@@ -84,7 +89,7 @@ static int apfs_statfs(struct dentry *dentry, struct kstatfs *kstatfs)
 }
 
 /**
- * apfs_put_super - free super block resources
+ * apfs_put_super() - free super block resources
  * @sb:		VFS superblock
  *
  * apfs_put_super() frees all resources for @sb after the last
@@ -99,6 +104,13 @@ static void apfs_put_super(struct super_block *sb)
 	kfree(apfs_info);
 }
 
+/**
+ * apfs_alloc_inode() - Allocate an APFS inode
+ * @sb:		VFS superblock
+ *
+ * apfs_alloc_inode() allocates an inode for the APFS filesystem
+ * mounted at @sb.
+ */
 static struct inode *apfs_alloc_inode(struct super_block *sb)
 {
 	struct apfs_inode		*apfs_inode;
@@ -111,6 +123,10 @@ static struct inode *apfs_alloc_inode(struct super_block *sb)
 	return &apfs_inode->vfs_inode;
 }
 
+/**
+ * apfs_i_callback() - rcu callback to free an APFS inode
+ * @head:	the RCU head on which we're called
+ */
 static void apfs_i_callback(struct rcu_head *head)
 {
 	struct inode	*inode = container_of(head, struct inode, i_rcu);

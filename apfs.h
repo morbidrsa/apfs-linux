@@ -441,7 +441,7 @@ extern struct inode *apfs_iget(struct super_block *sb, ino_t ino);
  */
 
 /**
- * APFS_SBI - get filesystem private data from VFS super block
+ * APFS_SBI() - get filesystem private data from VFS super block
  *
  * @sb:		the VFS super block
  */
@@ -450,6 +450,9 @@ static inline struct apfs_info* APFS_SBI(struct super_block *sb)
 	return sb->s_fs_info;
 }
 
+/**
+ * APFS_INO() - get filesystem private inode from VFS inode
+ */
 static inline struct apfs_inode *APFS_INO(struct inode *inode)
 {
 	return container_of(inode, struct apfs_inode, vfs_inode);

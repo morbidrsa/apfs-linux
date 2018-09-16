@@ -133,6 +133,16 @@ apfs_btree_find_bin(struct apfs_btree *tree, struct apfs_bnode *node,
 	return (rc == 0) ? se : NULL;
 }
 
+/**
+ * apfs_btree_lookup() - perform a B-Tree lookup
+ * @tree:	the B-Tree to perform the lookup in
+ * @key:	the key to search for in @tree
+ * @key_size:	the size of @key
+ *
+ * apfs_btree_lookup() performs a B-Tree lookup for the key pointed to
+ * by @key with in the B-Tree pointed to by @tree. As keys can have
+ * different size, it is passed in via @key_size.
+ */
 struct apfs_btree_search_entry *
 apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size)
 {
@@ -158,6 +168,15 @@ apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size)
 	return apfs_btree_find_bin(tree, node, key, key_size);
 }
 
+/**
+ * apfs_btree_iter_dup() - check for duplicate B-Tree iter entrys
+ * @it:		the APFS B-Tree iterator
+ * @bte:	the APFS B-Tree search entry to check
+ *
+ * apfs_btree_iter_dup() checks the B-Tree iterator @it wheather the
+ * entry pointed ot by @bte has already been found while iterating
+ * over the tree.
+ */
 bool apfs_btree_iter_dup(struct apfs_btree_iter *it,
 			 struct apfs_btree_search_entry *bte)
 {
@@ -176,6 +195,16 @@ bool apfs_btree_iter_dup(struct apfs_btree_iter *it,
 	return false;
 }
 
+/**
+ * apfs_btree_iter_next() - position iterator to the next entry
+ * @it:		the B-Tree iterator
+ * @key:	the key to look for
+ * @key_len:	the lenght of @key
+ *
+ * apfs_btree_iter_next() takes the B-Tree pointed to by @it->tree
+ * starting at position @it->pos and returns the next position where
+ * it can find key @key in it and then updates the new position.
+ */
 struct apfs_btree_iter *
 apfs_btree_iter_next(struct apfs_btree_iter *it, void *key, size_t key_len)
 {
@@ -225,6 +254,16 @@ apfs_btree_iter_next(struct apfs_btree_iter *it, void *key, size_t key_len)
 	return it;
 }
 
+/**
+ * apfs_btree_get_iter() - get an iterator for B-Tree nodes
+ * @tree:	the B-tree to get the iterator for
+ * @key:	the key to lookup in @tree
+ * @key_size:	the size of @key
+ * @start:	the starting offset for the iterator
+ *
+ * apfs_btree_get_iter() creates an iterator for the B-Tree @tree to
+ * look up a key @key with size @key_size starting at position @start.
+ */
 struct apfs_btree_iter *
 apfs_btree_get_iter(struct apfs_btree *tree, void *key, size_t key_size,
 		    loff_t start)
@@ -335,6 +374,15 @@ release_buffer:
 	return NULL;
 }
 
+/**
+ * apfs_btree_get_blockid() - lookup a specific block by ID
+ * @tree:	the tree to do the lookup in
+ * @oid:	the object ID of the block to search
+ * @xid:	the transaction ID of the block to search
+ *
+ * apfs_btree_get_blockid() lookup the LBA number of a block with
+ * object ID @oid and transaction ID @xid in B-Tree @tree.
+ */
 static u64 apfs_btree_get_blockid(struct apfs_btree *tree, u64 oid, u64 xid)
 {
 	struct apfs_node_id_map_key	key;
