@@ -395,11 +395,11 @@ struct apfs_btree_iter {
  * B-Tree related functions
  */
 
-extern struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
-					    apfs_btree_keycmp keycmp,
-					    struct apfs_btree *omap);
-extern struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root,
-					 u64 parent, u64 block, gfp_t gfp);
+struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
+				     apfs_btree_keycmp keycmp,
+				     struct apfs_btree *omap);
+struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root,
+					  u64 parent, u64 block, gfp_t gfp);
 struct apfs_btree_search_entry *apfs_btree_lookup(struct apfs_btree *tree,
 						  void *key, size_t key_size);
 void apfs_btree_free_search_entry(struct apfs_btree_search_entry *se);
@@ -427,15 +427,15 @@ static inline void apfs_btree_free_iter(struct apfs_btree_iter *it)
 	kfree(it);
 }
 
-extern int apfs_dir_keycmp(void *skey, size_t skey_len, void *ekey,
-			   size_t ekey_len, void *ctx);
+int apfs_dir_keycmp(void *skey, size_t skey_len, void *ekey,
+		    size_t ekey_len, void *ctx);
 
 /*
  * Inode related functions
  */
 
-extern struct inode *apfs_iget(struct super_block *sb, ino_t ino);
-extern void apfs_evict_inode(struct inode *inode);
+struct inode *apfs_iget(struct super_block *sb, ino_t ino);
+void apfs_evict_inode(struct inode *inode);
 
 /*
  * Helper Functions
