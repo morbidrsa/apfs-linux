@@ -39,7 +39,7 @@ static int apfs_readdir(struct file *file, struct dir_context *ctx)
 	struct apfs_dir_key		*dkey;
 	struct apfs_dir_val		*drec;
 	struct apfs_btree_iter		*it = file->private_data;
-	struct apfs_btree_search_entry	*bte;
+	struct apfs_btree_entry		*bte;
 	int				rc;
 
 	if (!dir_emit_dots(file, ctx))
@@ -125,7 +125,7 @@ static ino_t apfs_inode_by_name(struct inode *dir, struct dentry *dentry)
 	struct apfs_info		*apfs_info = APFS_SBI(dir->i_sb);
 	struct apfs_dir_key		*key;
 	struct apfs_dir_val		*drec;
-	struct apfs_btree_search_entry	*bte;
+	struct apfs_btree_entry		*bte;
 	ino_t				ino = 0;
 
 	key = kzalloc(sizeof(struct apfs_dir_key), GFP_KERNEL);
@@ -143,7 +143,7 @@ static ino_t apfs_inode_by_name(struct inode *dir, struct dentry *dentry)
 	drec = bte->val;
 	ino = drec->file_id;
 
-	apfs_btree_free_search_entry(bte);
+	apfs_btree_free_entry(bte);
 free_key:
 	kfree(key);
 	return ino;
@@ -259,7 +259,7 @@ static int apfs_lookup_disk_inode(struct super_block *sb,
 	struct apfs_dinode		*dinode = NULL;
 	struct apfs_ext_dstream		*dstream;
 	u64				key;
-	struct apfs_btree_search_entry	*bte;
+	struct apfs_btree_entry		*bte;
 	int 				i;
 	u16				entry_base;
 
@@ -313,7 +313,7 @@ static int apfs_lookup_disk_inode(struct super_block *sb,
 		entry_base += ((dinode->extents[i].length + 7) & 0xfff8);
 	}
 
-	apfs_btree_free_search_entry(bte);
+	apfs_btree_free_entry(bte);
 
 	return 0;
 }
@@ -335,7 +335,7 @@ static int apfs_getblk(struct inode *inode, sector_t iblock,
 	struct apfs_file_ext_key	key;
 	struct apfs_file_ext_key	*extent_key;
 	struct apfs_file_ext_val	*extent;
-	struct apfs_btree_search_entry	*bte;
+	struct apfs_btree_entry		*bte;
 	u64				extent_size;
 
 	key.oid = (u64) KEY_TYPE_FILE_EXTENT << APFS_KEY_SHIFT;
@@ -354,7 +354,7 @@ static int apfs_getblk(struct inode *inode, sector_t iblock,
 	map_bh(bh, inode->i_sb, extent->phys_blocks);
 	bh->b_size = extent_size;
 
-	apfs_btree_free_search_entry(bte);
+	apfs_btree_free_entry(bte);
 	return 0;
 }
 

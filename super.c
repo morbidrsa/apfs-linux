@@ -269,7 +269,7 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 	u64				omap_oid;
 	u64				root_tree_oid;
 	unsigned int			bsize;
-	struct apfs_btree_search_entry *bte;
+	struct apfs_btree_entry 	*bte;
 
 	sb->s_flags |= SB_RDONLY;
 
@@ -320,7 +320,7 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 	if (apfs_get_apsb_magic(sb, silent, val->block))
 		goto free_bp;
 
-	apfs_btree_free_search_entry(bte);
+	apfs_btree_free_entry(bte);
 	apsb = apfs_info->apsb;
 	root_tree_oid = le64_to_cpu(apsb->root_tree_oid);
 	apfs_info->apsb_omap_root = apfs_btree_create(sb, apsb->omap_oid,

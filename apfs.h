@@ -375,7 +375,7 @@ struct apfs_bnode {
 	};
 };
 
-struct apfs_btree_search_entry {
+struct apfs_btree_entry {
 	struct apfs_bnode	*node;
 	void			*key;
 	size_t			key_len;
@@ -387,8 +387,8 @@ struct apfs_btree_iter {
 	struct apfs_btree	*tree;
 	struct apfs_bnode	*node;
 	loff_t			pos;
-	struct apfs_btree_search_entry *bte;
-	struct apfs_btree_search_entry *se[253];
+	struct apfs_btree_entry *bte;
+	struct apfs_btree_entry *se[253];
 };
 
 /*
@@ -400,9 +400,9 @@ struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
 				     struct apfs_btree *omap);
 struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root,
 					  u64 parent, u64 block, gfp_t gfp);
-struct apfs_btree_search_entry *apfs_btree_lookup(struct apfs_btree *tree,
-						  void *key, size_t key_size);
-void apfs_btree_free_search_entry(struct apfs_btree_search_entry *se);
+struct apfs_btree_entry *apfs_btree_lookup(struct apfs_btree *tree,
+					   void *key, size_t key_size);
+void apfs_btree_free_entry(struct apfs_btree_entry *se);
 struct apfs_btree_iter *apfs_btree_get_iter(struct apfs_btree *tree,
 					    void *key, size_t key_size,
 					    loff_t start);
@@ -410,7 +410,7 @@ struct apfs_btree_iter *
 apfs_btree_iter_next(struct apfs_btree_iter *it, void *key, size_t key_len);
 
 bool apfs_btree_iter_dup(struct apfs_btree_iter *it,
-			 struct apfs_btree_search_entry *bte);
+			 struct apfs_btree_entry *bte);
 
 #define APFS_BTREE_ITER_END	(loff_t)~0
 static inline bool apfs_btree_iter_end(struct apfs_btree_iter *it)
@@ -423,7 +423,7 @@ static inline void apfs_btree_free_iter(struct apfs_btree_iter *it)
 	if (!it)
 		return;
 
-	apfs_btree_free_search_entry(it->bte);
+	apfs_btree_free_entry(it->bte);
 	kfree(it);
 }
 
