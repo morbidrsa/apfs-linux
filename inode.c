@@ -413,3 +413,15 @@ struct inode *apfs_iget(struct super_block *sb, ino_t ino)
 	return inode;
 }
 
+/**
+ * apfs_evict_inode() - remove inode from main memory
+ * @inode:	inode to discard
+ *
+ * apfs_evict_inode() is called on the final iput and frees the
+ * private inode area.
+ */
+void apfs_evict_inode(struct inode *inode)
+{
+	truncate_inode_pages_final(&inode->i_data);
+	clear_inode(inode);
+}

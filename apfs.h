@@ -435,6 +435,7 @@ extern int apfs_dir_keycmp(void *skey, size_t skey_len, void *ekey,
  */
 
 extern struct inode *apfs_iget(struct super_block *sb, ino_t ino);
+extern void apfs_evict_inode(struct inode *inode);
 
 /*
  * Helper Functions

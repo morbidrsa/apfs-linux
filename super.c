@@ -146,6 +146,7 @@ static void apfs_destroy_inode(struct inode *inode)
 static const struct super_operations apfs_super_ops = {
 	.alloc_inode	= apfs_alloc_inode,
 	.destroy_inode	= apfs_destroy_inode,
+	.evict_inode	= apfs_evict_inode,
 	.put_super	= apfs_put_super,
 	.statfs		= apfs_statfs,
 };
