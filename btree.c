@@ -156,13 +156,14 @@ apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size)
 		if (!entry)
 			return NULL;
 
-		nodeid = (u64) entry->val;
+		nodeid = *(u64*) entry->val;
 		parentid = node->ohdr->oid;
-		node = entry->node;
 		apfs_btree_free_entry(entry);
+
+		/* XXX: free old node here */
+		node = apfs_btree_create_node(tree, parentid, nodeid, GFP_KERNEL);
 		if (!node)
 			return NULL;
-
 	}
 
 	return apfs_btree_find_bin(tree, node, key, key_size);
