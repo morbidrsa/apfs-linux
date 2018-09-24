@@ -400,6 +400,7 @@ struct apfs_btree *apfs_btree_create(struct super_block *sb, u64 block,
 				     struct apfs_btree *omap);
 struct apfs_bnode *apfs_btree_create_node(struct apfs_btree *root,
 					  u64 parent, u64 block, gfp_t gfp);
+void apfs_btree_delete_node(struct apfs_bnode *node);
 struct apfs_btree_entry *apfs_btree_lookup(struct apfs_btree *tree,
 					   void *key, size_t key_size);
 void apfs_btree_free_entry(struct apfs_btree_entry *se);

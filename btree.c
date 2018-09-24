@@ -340,6 +340,14 @@ out:
 	return it;
 }
 
+void apfs_btree_delete_node(struct apfs_bnode *node)
+{
+	if (node) {
+		brelse(node->bp);
+		kfree(node);
+	}
+}
+
 /**
  * apfs_btree_create_node - create a B-Tree Node
  *
