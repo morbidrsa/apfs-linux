@@ -309,7 +309,7 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 
 	key.oid = le64_to_cpu(nxsb->fs_oid);
 	key.xid = apfs_info->xid;
-	bte = apfs_btree_lookup(apfs_info->nxsb_omap_root, &key, sizeof(key));
+	bte = apfs_btree_lookup(apfs_info->nxsb_omap_root, &key, sizeof(key), false);
 	if (!bte)
 		goto free_bp;
 	val = bte->val;

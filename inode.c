@@ -136,7 +136,7 @@ static ino_t apfs_inode_by_name(struct inode *dir, struct dentry *dentry)
 	key->parent_id |= dir->i_ino;
 	memcpy(key->name, dentry->d_name.name, APFS_MAX_NAME);
 
-	bte = apfs_btree_lookup(apfs_info->dir_tree_root, key, sizeof(*key));
+	bte = apfs_btree_lookup(apfs_info->dir_tree_root, key, sizeof(*key), true);
 	if (!bte)
 		goto free_key;
 
@@ -266,7 +266,7 @@ static int apfs_lookup_disk_inode(struct super_block *sb,
 	key = (u64) KEY_TYPE_INODE << APFS_KEY_SHIFT;
 	key |= ino;
 
-	bte = apfs_btree_lookup(apfs_info->dir_tree_root, &key, sizeof(key));
+	bte = apfs_btree_lookup(apfs_info->dir_tree_root, &key, sizeof(key), false);
 	if (!bte)
 		return -ENOENT;
 
@@ -342,7 +342,7 @@ static int apfs_getblk(struct inode *inode, sector_t iblock,
 	key.oid |= inode->i_ino;
 	key.offs = iblock;
 
-	bte = apfs_btree_lookup(apfs_info->dir_tree_root, &key, sizeof(key));
+	bte = apfs_btree_lookup(apfs_info->dir_tree_root, &key, sizeof(key), true);
 	if (!bte)
 		return -EIO;
 

@@ -122,9 +122,9 @@ free_entry:
  * which must be freed with apfs_btree_free_entry() when
  * finished.
  */
-static struct apfs_btree_entry *
+static int
 apfs_btree_find_bin(struct apfs_btree *tree, struct apfs_bnode *node,
-		    void *key, size_t key_size)
+		    void *key, size_t key_size, bool exact)
 {
 	struct apfs_btree_entry *se;
 	int			begin;
@@ -132,12 +132,14 @@ apfs_btree_find_bin(struct apfs_btree *tree, struct apfs_bnode *node,
 	int			mid;
 	int			cnt;
 	int			rc;
+	int			index;
 
 	cnt = node->ecnt;
 	if (cnt <= 0)
-		return NULL;
+		return -1;
 
 	begin = 0;
+	mid = -1;
 	end = cnt - 1;
 
 	while (begin <= end) {
@@ -145,7 +147,7 @@ apfs_btree_find_bin(struct apfs_btree *tree, struct apfs_bnode *node,
 
 		se = apfs_btree_get_entry(tree, node, mid);
 		if (!se)
-			return NULL;
+			return -1;
 		rc = tree->keycmp(key, key_size, se->key, se->key_len, NULL);
 		if (!rc) /* found */
 			break;
@@ -154,12 +156,17 @@ apfs_btree_find_bin(struct apfs_btree *tree, struct apfs_bnode *node,
 		else if (rc == 1)
 			end = mid - 1;
 		apfs_btree_free_entry(se);
+		se = NULL;
 	}
 
-	if (rc)
-		apfs_btree_free_entry(se);
+	apfs_btree_free_entry(se);
 
-	return (rc == 0) ? se : NULL;
+	if (exact)
+		index = (rc == 0) ? mid : -1;
+	else
+		index = (rc <= 0) ? mid : (mid - 1);
+
+	return index;
 }
 
 /**
@@ -173,16 +180,20 @@ apfs_btree_find_bin(struct apfs_btree *tree, struct apfs_bnode *node,
  * different size, it is passed in via @key_size.
  */
 struct apfs_btree_entry *
-apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size)
+apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size, bool exact)
 {
 	struct apfs_bnode	*node = tree->root;
 	struct apfs_btree_entry *entry;
 	u64			nodeid;
 	u64			blockid;
 	u64			parentid;
+	int			index;
 
 	while (node->level > 0) {
-		entry = apfs_btree_find_bin(tree, node, key, key_size);
+		index = apfs_btree_find_bin(tree, node, key, key_size, false);
+		if (index < 0)
+			return NULL;
+		entry = apfs_btree_get_entry(tree, node, index);
 		if (!entry)
 			return NULL;
 
@@ -190,7 +201,9 @@ apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size)
 		parentid = node->ohdr->oid;
 		apfs_btree_free_entry(entry);
 
-		/* TODO: free old node here */
+		if (node != tree->root)
+			apfs_btree_delete_node(node);
+
 		if (tree->omap) {
 			blockid = apfs_btree_get_blockid(tree->omap, nodeid, 0);
 			if (!blockid)
@@ -203,7 +216,13 @@ apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size)
 			return NULL;
 	}
 
-	return apfs_btree_find_bin(tree, node, key, key_size);
+	index = apfs_btree_find_bin(tree, node, key, key_size, exact ? true : false);
+	if (index < 0)
+		return NULL;
+
+	entry = apfs_btree_get_entry(tree, node, index);
+	apfs_btree_delete_node(node);
+	return entry;
 }
 
 /**
@@ -310,6 +329,10 @@ apfs_btree_get_iter(struct apfs_btree *tree, void *key, size_t key_size,
 	struct apfs_bnode		*root = tree->root;
 	struct apfs_bnode		*node;
 	struct apfs_btree_entry		*bte;
+	u64				nodeid;
+	u64				parentid;
+	u64				blockid;
+	int				index;
 
 	it = kzalloc(sizeof(struct apfs_btree_iter), GFP_KERNEL);
 	if (!it)
@@ -319,21 +342,41 @@ apfs_btree_get_iter(struct apfs_btree *tree, void *key, size_t key_size,
 	it->pos = start;
 	it->node = node = root;
 	while (node->level > 0) {
-		bte = apfs_btree_find_bin(it->tree, node, key, key_size);
+		index = apfs_btree_find_bin(it->tree, node, key, key_size, false);
+		if (index < 0)
+			index = 0;
+		bte = apfs_btree_get_entry(it->tree, node, index);
 		if (!bte)
 			goto out;
 
-		node = bte->node;
+		nodeid = *(u64*) bte->val;
+		parentid = node->ohdr->oid;
 		apfs_btree_free_entry(bte);
+
+		if (node != tree->root)
+			apfs_btree_delete_node(node);
+
+		if (tree->omap) {
+			blockid = apfs_btree_get_blockid(tree->omap, nodeid, 0);
+			if (!blockid)
+				goto out;
+			node = apfs_btree_create_node(tree, parentid, blockid, GFP_KERNEL);
+		} else {
+			node = apfs_btree_create_node(tree, parentid, nodeid, GFP_KERNEL);
+		}
+		if (!node)
+			goto out;
 	}
 
-	bte = apfs_btree_find_bin(it->tree, node, key, key_size);
+	index =	apfs_btree_find_bin(it->tree, node, key, key_size, true);
+	if (index < 0)
+		goto out;
+	bte = apfs_btree_get_entry(it->tree, node, index);
 	if (!bte)
 		goto out;
 
 	it->node = bte->node;
 	it->bte = bte;
-
 	it->se[it->pos] = bte;
 
 out:
