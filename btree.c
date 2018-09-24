@@ -15,6 +15,35 @@
 static struct kmem_cache *apfs_btree_cachep;
 
 /**
+ * apfs_btree_get_blockid() - lookup a specific block by ID
+ * @tree:	the tree to do the lookup in
+ * @oid:	the object ID of the block to search
+ * @xid:	the transaction ID of the block to search
+ *
+ * apfs_btree_get_blockid() lookup the LBA number of a block with
+ * object ID @oid and transaction ID @xid in B-Tree @tree.
+ */
+static u64 apfs_btree_get_blockid(struct apfs_btree *tree, u64 oid, u64 xid)
+{
+	struct apfs_node_id_map_key	key;
+	struct apfs_node_id_map_value	*val;
+	struct apfs_btree_entry		*bte;
+	u64				block;
+
+	key.oid = oid;
+	key.xid = xid;
+
+	bte = apfs_btree_lookup(tree, &key, sizeof(key), true);
+	if (!bte)
+		return 0;
+	val = bte->val;
+	block = val->block;
+	apfs_btree_free_entry(bte);
+
+	return block;
+}
+
+/**
  * apfs_btree_free_entry() - free a %apfs_btree_entry
  * @se:		the %apfs_btree_entry to free
  */
@@ -149,6 +178,7 @@ apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size)
 	struct apfs_bnode	*node = tree->root;
 	struct apfs_btree_entry *entry;
 	u64			nodeid;
+	u64			blockid;
 	u64			parentid;
 
 	while (node->level > 0) {
@@ -160,8 +190,15 @@ apfs_btree_lookup(struct apfs_btree *tree, void *key, size_t key_size)
 		parentid = node->ohdr->oid;
 		apfs_btree_free_entry(entry);
 
-		/* XXX: free old node here */
-		node = apfs_btree_create_node(tree, parentid, nodeid, GFP_KERNEL);
+		/* TODO: free old node here */
+		if (tree->omap) {
+			blockid = apfs_btree_get_blockid(tree->omap, nodeid, 0);
+			if (!blockid)
+				return NULL;
+			node = apfs_btree_create_node(tree, parentid, blockid, GFP_KERNEL);
+		} else {
+			node = apfs_btree_create_node(tree, parentid, nodeid, GFP_KERNEL);
+		}
 		if (!node)
 			return NULL;
 	}
@@ -373,35 +410,6 @@ release_buffer:
 	brelse(bp);
 	kmem_cache_free(apfs_btree_cachep, node);
 	return NULL;
-}
-
-/**
- * apfs_btree_get_blockid() - lookup a specific block by ID
- * @tree:	the tree to do the lookup in
- * @oid:	the object ID of the block to search
- * @xid:	the transaction ID of the block to search
- *
- * apfs_btree_get_blockid() lookup the LBA number of a block with
- * object ID @oid and transaction ID @xid in B-Tree @tree.
- */
-static u64 apfs_btree_get_blockid(struct apfs_btree *tree, u64 oid, u64 xid)
-{
-	struct apfs_node_id_map_key	key;
-	struct apfs_node_id_map_value	*val;
-	struct apfs_btree_entry		*bte;
-	u64				block;
-
-	key.oid = oid;
-	key.xid = xid;
-
-	bte = apfs_btree_lookup(tree, &key, sizeof(key));
-	if (!bte)
-		return 0;
-	val = bte->val;
-	block = val->block;
-	apfs_btree_free_entry(bte);
-
-	return block;
 }
 
 /**
