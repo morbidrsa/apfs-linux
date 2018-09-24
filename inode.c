@@ -89,7 +89,8 @@ static int apfs_readdir(struct file *file, struct dir_context *ctx)
 		drec = bte->val;
 
 		rc = dir_emit(ctx, dkey->name, strlen(dkey->name),
-			      le64_to_cpu(drec->file_id), DT_UNKNOWN);
+			      le64_to_cpu(drec->file_id),
+			      le16_to_cpu(drec->flags));
 		if (!rc)
 			goto free_key;
 
