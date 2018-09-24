@@ -304,7 +304,7 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 	omap_oid = le64_to_cpu(nxsb->omap_oid);
 	apfs_info->nxsb_omap_root = apfs_btree_create(sb, omap_oid,
 						      omap_keycmp, NULL);
-	if (!apfs_info->nxsb_omap_root)
+	if (IS_ERR(apfs_info->nxsb_omap_root))
 		goto free_bp;
 
 	key.oid = le64_to_cpu(nxsb->fs_oid);
@@ -325,13 +325,15 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 	root_tree_oid = le64_to_cpu(apsb->root_tree_oid);
 	apfs_info->apsb_omap_root = apfs_btree_create(sb, apsb->omap_oid,
 						      oid_keycmp, NULL);
-	if (!apfs_info->apsb_omap_root)
+	if (IS_ERR(apfs_info->apsb_omap_root))
 		goto free_bp;
 
+	pr_debug("searching for root dir at object id: 0x%llx\n",
+			root_tree_oid);
 	apfs_info->dir_tree_root = apfs_btree_create(sb, root_tree_oid,
 						     apfs_dir_keycmp,
 						     apfs_info->apsb_omap_root);
-	if (!apfs_info->dir_tree_root)
+	if (IS_ERR(apfs_info->dir_tree_root))
 		goto free_bp;
 
 	inode = apfs_iget(sb, APFS_ROOT_INODE);
