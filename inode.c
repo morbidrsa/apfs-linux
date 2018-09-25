@@ -77,14 +77,6 @@ static int apfs_readdir(struct file *file, struct dir_context *ctx)
 		if (apfs_btree_iter_end(it))
 			break;
 
-		/*
-		 * check if we've already found this entry at another
-		 * position, this works around a bug in the iterator
-		 * code, where we return some entries twice.
-		 */
-		if (apfs_btree_iter_dup(it, bte))
-			goto next;
-
 		dkey = bte->key;
 		drec = bte->val;
 
@@ -131,18 +123,18 @@ static ino_t apfs_inode_by_name(struct inode *dir, struct dentry *dentry)
 
 	key = kzalloc(sizeof(struct apfs_dir_key), GFP_KERNEL);
 	if (!key)
-		return -ENOMEM;
+		return 0;
 
 	key->parent_id = (u64) KEY_TYPE_DIR_RECORD << APFS_KEY_SHIFT;
 	key->parent_id |= dir->i_ino;
-	memcpy(key->name, dentry->d_name.name, APFS_MAX_NAME);
+	strlcpy(key->name, dentry->d_name.name, APFS_MAX_NAME);
 
 	bte = apfs_btree_lookup(apfs_info->dir_tree_root, key, sizeof(*key), true);
 	if (!bte)
 		goto free_key;
 
 	drec = bte->val;
-	ino = drec->file_id;
+	ino = le64_to_cpu(drec->file_id);
 
 	apfs_btree_free_entry(bte);
 free_key:
