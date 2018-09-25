@@ -190,6 +190,8 @@ int apfs_dir_keycmp(void *skey, size_t skey_len, void *ekey,
 {
 	struct apfs_dir_key		*sdir;
 	struct apfs_dir_key		*edir;
+	struct apfs_file_ext_key	*sext;
+	struct apfs_file_ext_key	*eext;
 	u64				ks = *(u64 *) skey;
 	u64				ke = *(u64 *) ekey;
 
@@ -212,6 +214,13 @@ int apfs_dir_keycmp(void *skey, size_t skey_len, void *ekey,
 			return strncmp(edir->name, sdir->name, APFS_MAX_NAME);
 		break;
 	case KEY_TYPE_FILE_EXTENT:
+		sext = skey;
+		eext = ekey;
+
+		if (eext->offs < sext->offs)
+			return -1;
+		if (eext->offs > sext->offs)
+			return 1;
 		break;
 	case KEY_TYPE_XATTR:
 		break;
