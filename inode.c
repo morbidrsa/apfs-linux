@@ -354,7 +354,6 @@ static int apfs_getblk(struct inode *inode, sector_t iblock,
 	extent_size = extent->flags_length & 0x00ffffffffffffff;
 
 	map_bh(bh, inode->i_sb, extent->phys_blocks);
-	bh->b_size = extent_size;
 
 	apfs_btree_free_entry(bte);
 	return 0;
