@@ -1,0 +1,23 @@
+Linux APFS
+----------
+
+This repository provides an initial and incomplete implementation of
+APFS for Linux.
+
+It pre-dates Apple's official documentation of the APFS on-disk
+structures so the naming is not correct yet.
+
+What works:
+- Mounting disks
+- Listing small directories
+- Reading single block files
+
+What doesn't:
+- Listing bigger directories
+- Multi block (e.g. bigger 4K Bytes) files
+- Compression
+- Encryption
+- Freeing up memory when it's unneeded
+
+This file system is neither ready for production nor ready for
+submission to the mainline Linux kernel, although both is planned.
