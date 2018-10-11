@@ -165,7 +165,7 @@ static int apfs_get_nxsb_magic(struct super_block *sb, int silent, u64 blk)
 	struct apfs_info		*apfs_info = APFS_SBI(sb);
 	struct apfs_container_sb	*nxsb;
 	struct buffer_head		*bp;
-	int 				rc = -ENOMEM;
+	int				rc = -ENOMEM;
 
 	bp = sb_bread(sb, blk);
 	if (!bp || !buffer_mapped(bp)) {
@@ -213,7 +213,7 @@ static int apfs_get_apsb_magic(struct super_block *sb, int silent, u64 blk)
 	struct apfs_info		*apfs_info = APFS_SBI(sb);
 	struct apfs_volume_sb		*apsb;
 	struct buffer_head		*bp;
-	int 				rc = -ENOMEM;
+	int				rc = -ENOMEM;
 
 	bp = sb_bread(sb, blk);
 	if (!bp || !buffer_mapped(bp)) {
@@ -269,7 +269,7 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 	u64				omap_oid;
 	u64				root_tree_oid;
 	unsigned int			bsize;
-	struct apfs_btree_entry 	*bte;
+	struct apfs_btree_entry		*bte;
 
 	sb->s_flags |= SB_RDONLY;
 
@@ -309,7 +309,8 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 
 	key.oid = le64_to_cpu(nxsb->fs_oid);
 	key.xid = apfs_info->xid;
-	bte = apfs_btree_lookup(apfs_info->nxsb_omap_root, &key, sizeof(key), false);
+	bte = apfs_btree_lookup(apfs_info->nxsb_omap_root, &key,
+				sizeof(key), false);
 	if (!bte)
 		goto free_bp;
 	val = bte->val;
