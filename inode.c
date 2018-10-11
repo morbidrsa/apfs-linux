@@ -87,7 +87,6 @@ static int apfs_readdir(struct file *file, struct dir_context *ctx)
 			goto free_key;
 
 		ctx->pos++;
-next:
 		it = apfs_btree_iter_next(it, key, sizeof(*key));
 	}
 
