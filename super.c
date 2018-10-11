@@ -10,6 +10,7 @@
 #include <linux/buffer_head.h>
 #include <linux/module.h>
 #include <linux/statfs.h>
+#include <linux/blkdev.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
 
@@ -300,6 +301,7 @@ static int apfs_fill_super(struct super_block *sb, void *dp, int silent)
 		pr_warn("unable to set final block size to: %u\n", bsize);
 		goto free_bp;
 	}
+	sb->s_blocksize_bits = blksize_bits(bsize);
 
 	omap_oid = le64_to_cpu(nxsb->omap_oid);
 	apfs_info->nxsb_omap_root = apfs_btree_create(sb, omap_oid,

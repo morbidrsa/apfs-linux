@@ -344,7 +344,7 @@ static int apfs_getblk(struct inode *inode, sector_t iblock,
 
 	key.oid = (u64) KEY_TYPE_FILE_EXTENT << APFS_KEY_SHIFT;
 	key.oid |= inode->i_ino;
-	key.offs = iblock * inode->i_sb->s_blocksize;
+	key.offs = iblock << inode->i_sb->s_blocksize_bits;
 
 	bte = apfs_btree_lookup(apfs_info->dir_tree_root, &key,
 				sizeof(key), true);
